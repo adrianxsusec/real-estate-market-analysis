@@ -1,0 +1,9 @@
+```{r}
+library(readr)
+
+#dataset loading
+dataset <- read_csv("preprocessed_data.csv")
+
+summary(dataset)
+```
+
