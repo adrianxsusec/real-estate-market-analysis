@@ -1,7 +1,15 @@
+---
+title: "SAP - Analiza tržišta nekretnina"
+subtitle: "Case study Real estate market analysis"
+author: "Adrian Sušec, Josip Goluža, Edi Prodan, Zvonimir Žunić"
+date: "28.11.2022."
+output: pdf_document
+---
+
 ```{r}
 library(readr)
 
-#dataset loading
+#data set loading
 dataset <- read_csv("preprocessed_data.csv")
 
 summary(dataset)
