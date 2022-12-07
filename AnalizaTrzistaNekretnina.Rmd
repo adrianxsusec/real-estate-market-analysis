@@ -6,13 +6,31 @@ date: "28.11.2022."
 output: pdf_document
 ---
 
+# Necesarry libraries
+
 ```{r}
 library(readr)
+library(dplyr)
+```
 
-#data set loading
+# Loading dataset
+
+```{r}
 dataset <- read_csv("preprocessed_data.csv")
+```
 
-summary(dataset)
+
+#Plotting lot shape frequencies
+
+```{r}
+
+dataset %>% 
+  group_by(LotShape) %>%
+  tally()-> lotshapefreq
+lotshapefreq
+
+barplot(lotshapefreq$n, names.arg = lotshapefreq$LotShape, main="Lot shape frequency", xlab="Lot shape type", col="Green")
+
 ```
 
 
