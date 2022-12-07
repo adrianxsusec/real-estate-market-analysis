@@ -15,7 +15,4 @@ dataset <- read_csv("preprocessed_data.csv")
 summary(dataset)
 ```
 
-```{r}
-mean(dataset$LotArea)
-```
 
