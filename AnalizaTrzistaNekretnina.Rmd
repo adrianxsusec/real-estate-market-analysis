@@ -36,4 +36,9 @@ barplot(table(dataset$LotShape))
 
 ```
 
+```{r}
+names(dataset)
+dataset$HouseStyle
+```
+
 
