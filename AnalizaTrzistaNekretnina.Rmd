@@ -31,6 +31,9 @@ lotshapefreq
 
 barplot(lotshapefreq$n, names.arg = lotshapefreq$LotShape, main="Lot shape frequency", xlab="Lot shape type", col="Green")
 
+# radi istu stvar
+barplot(table(dataset$LotShape))
+
 ```
 
 
