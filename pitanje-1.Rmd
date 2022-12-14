@@ -1,0 +1,23 @@
+# Necesarry libraries
+
+```{r}
+library(readr)
+library(dplyr)
+```
+
+# Loading dataset
+
+```{r}
+dataset <- read_csv("preprocessed_data.csv")
+```
+
+# Fisher's exact test
+
+```{r}
+table <- table(dataset$LotShape, dataset$HouseStyle)
+
+table
+
+fisher.test(dataset$LotShape, dataset$HouseStyle, simulate.p.value = TRUE, B = 20000)
+```
+

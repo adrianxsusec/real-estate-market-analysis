@@ -19,7 +19,6 @@ library(dplyr)
 dataset <- read_csv("preprocessed_data.csv")
 ```
 
-
 #Plotting lot shape frequencies
 
 ```{r}
@@ -35,5 +34,14 @@ barplot(lotshapefreq$n, names.arg = lotshapefreq$LotShape, main="Lot shape frequ
 barplot(table(dataset$LotShape))
 
 ```
+```{r}
+table <- table(dataset$LotShape, dataset$HouseStyle)
+
+??fisher.test
+
+fisher.test(dataset$LotShape, dataset$HouseStyle, simulate.p.value = TRUE, B = 20000)
+```
+
+
 
 
