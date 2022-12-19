@@ -326,7 +326,7 @@ BsmtFinSF2: Type 2 finished square feet
 
 BsmtUnfSF: Unfinished square feet of basement area
 
-TotalBsmtSF: Total square feet of basement area
+TotalBsmtSF: Total square feet of basement areao
 
 Heating: Type of heating
 		

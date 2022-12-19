@@ -1,0 +1,29 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+# Necesarry libraries
+
+```{r}
+library(readr)
+library(dplyr)
+```
+
+# Loading dataset
+
+```{r}
+dataset <- read_csv("preprocessed_data.csv")
+```
+
+
+
+```{r}
+fit.reg = lm(BedroomAbvGr ~ SalePrice,data=dataset)
+
+fit.reg$fitted.values
+
+plot(dataset$BedroomAbvGr,dataset$SalePrice)
+lines(dataset$BedroomAbvGr,fit.reg$fitted.values,col='red')
+```
+
