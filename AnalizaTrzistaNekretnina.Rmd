@@ -38,7 +38,69 @@ barplot(table(dataset$LotShape))
 
 ```{r}
 names(dataset)
-dataset$HouseStyle
 ```
+
+#4. Zadatak
+```{r}
+houseStyle <- (dataset$HouseStyle)
+houseStyle_factor <- factor(houseStyle, levels = unique(houseStyle), labels = c(1, 2, 3, 4,5,6,7,8))
+houseStyle
+houseStyle_factor
+plot(houseStyle_factor, dataset$SalePrice)
+dataset$Utilities
+```
+
+```{r}
+price <- dataset$SalePrice
+yearBuilt <- (dataset$YearBuilt)
+yearBuilt
+fit.date = lm(dataset$SalePrice ~ yearBuilt, data=dataset$SalePrice.data)
+fit.date
+plot(yearBuilt, dataset$SalePrice)
+lines(yearBuilt, fit.date$fitted.values, col="red")
+```
+
+```{r}
+fit.dates = lm(price ~ yearBuilt + houseStyle_factor, data=dataset$SalePrice.data)
+summary(fit.dates)
+class(dataset$HouseStyle)
+houseStyle <- as.numeric(houseStyle_factor)
+class(yearBuilt)
+cor(yearBuilt, houseStyle)
+```
+
+```{r}
+cor(cbind(yearBuilt, houseStyle))
+
+multivars <- c("MSZoning", "Neighborhood", "Condition1", "HouseStyle", "YearBuilt", "Exterior1st", "OverallQual")
+df <- data.frame()
+df
+for (linVar in multivars) {
+  if(class(dataset[[linVar]]) == "character") {
+    df[linVar] <- factor(dataset[[linVar]], levels = unique(dataset[[linVar]]), labels = c(1:n_distinct(dataset[[linVar]])))
+  } else {
+    df[linVar] <- dataset[[linVar]]
+  }
+}
+df
+```
+
+```{r}
+multivars <- c("YearBuilt", "GrLivArea")
+df = data.frame(matrix(nrow = 1460, ncol = 2)) 
+colnames(df) = multivars
+
+df
+for (linVar in multivars) {
+    df[linVar] <- dataset[[linVar]]
+}
+df
+cor(df)
+```
+
+
+
+
+
 
 
