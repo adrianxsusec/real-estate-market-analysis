@@ -11,13 +11,44 @@ library(dplyr)
 dataset <- read_csv("preprocessed_data.csv")
 ```
 
-# Fisher's exact test
 
 ```{r}
-table <- table(dataset$LotShape, dataset$HouseStyle)
+# Pitanje 1. "Određuje li oblik zemljišne čestice broj katova kuće?"
+```
+Postavljamo hipoteze:
+
+Ho: broj katova kuće ne ovisi o obliku zemljišne čestice
+H1:broj katova kuće ovisi o obliku zemljišne čestice
+
+Učitavamo dataset u varijablu df sa kojom ćemo dalje raditi.
+```{r}
+df <- dataset
+
+```
+
+
+Grupiramo vrijednosti podataka u stupcu. Stambeni objekti koji imaju 1.5 kat tretiramo kao da imaju 1 kat, a objekti koji imaju 2.5 kata tretiramo kao da imaju 2 kata. 
+```{r}
+
+df$HouseStyle <- gsub("1.5Fin", "1Story", df$HouseStyle)
+df$HouseStyle <- gsub("1.5Unf", "1Story", df$HouseStyle)
+df$HouseStyle <- gsub("2.5Fin", "2Story", df$HouseStyle)
+df$HouseStyle <- gsub("2.5Unf", "2Story", df$HouseStyle)
+df$HouseStyle <- gsub("SFoyer", "2Story", df$HouseStyle)
+df$HouseStyle <- gsub("SLvl", "2Story", df$HouseStyle)
+
+df
+
+help("chisq.test")
+
+```
+
+Prethodno spomenute hipoteze testiramo testom nezavisnoti pomoću chi testa.
+```{r}
+table <- table(df$LotShape, df$HouseStyle)
 
 table
 
-fisher.test(dataset$LotShape, dataset$HouseStyle, simulate.p.value = TRUE, B = 20000)
-```
+chisq.test(df$LotShape, df$HouseStyle, simulate.p.value = TRUE, B = 20000)
 
+```
