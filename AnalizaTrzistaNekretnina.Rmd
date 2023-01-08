@@ -35,5 +35,8 @@ barplot(lotshapefreq$n, names.arg = lotshapefreq$LotShape, main="Lot shape frequ
 barplot(table(dataset$LotShape))
 
 ```
-
+```{r}
+dataset %>%
+  
+```
 
