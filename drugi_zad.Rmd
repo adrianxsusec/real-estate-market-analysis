@@ -1,27 +1,59 @@
 # Drugi zadatak
 
 ```{r}
+library(readr)
+```
+
+```{r}
+dataset <- read_csv("preprocessed_data.csv")
+```
+
+```{r}
 basement_area = dataset$TotalBsmtSF
 neighbourhood = dataset$Neighborhood
+
+basement_area
+neighbourhood
 ```
+Dani su podaci veličine podruma i kvart u kojoj se nekretnina nalazi.
 
 ```{r}
-basement_sizes = findInterval(basement_area, c(0, 1, 500, 1000, 1500, 2000))
-freq_tbl = table(basement_sizes, neighbourhood)
+length(unique(neighbourhood))
+unique_neighbourhood <- unique(neighbourhood)
 ```
-```{r}
-tbl = addmargins(freq_tbl)
+Postoji 25 različitih kvartova za koje ispitujemo ako utječu na veličinu podruma
 
-for (col_names in colnames(tbl)){
-  for (row_names in rownames(tbl)){
-    if (!(row_names == 'Sum' | col_names == 'Sum') ){
-      cat('Očekivane frekvencije za razred ',col_names,'-',row_names,': ',(tbl[row_names,'Sum'] * tbl['Sum',col_names]) / tbl['Sum','Sum'],'\n')
-    }
-  }
-}
+# ANOVA
+
+Koristit ćemo statistički test ANOVA kako bi testirali sredinu više populacija. U našem slučaju imamo 25 kvartova gdje ćemo za svaki kvart izračunati sredjnu veličine garaže. 
+
+#U analizi varijance pretpostavlja se da je ukupna varijabilnost u podatcima posljedica varijabilnosti podataka unutar svakog pojedine
+#grupe (populacije) i varijabilnosti između različitih grupa. Varijabilnost unutar pojedinog uzorka je rezultat slučajnosti, a ako
+#postoje razlike u sredinama populacija, one će biti odražene u varijabilnosti među grupama. Jedan od glavnih ciljeva analize
+#varijance je ustanoviti jesu li upravo te razlike između grupa samo posljedica slučajnosti ili je statistički značajna.
+
+Pretpostavke ANOVA-e su:
+
+- nezavisnost pojedinih podataka u uzorcima,
+- normalna razdioba podataka,
+- homogenost varijanci među populacijama. 
+
+Provjera normalnosti može se za svaku pojedinu grupu napraviti KS testom ili Lillieforsovom inačicom KS testa. U ovom slučaju razmatrat ćemo kvart kao nezavisnu varijablu i veličinu garaže kao zavisnu varijablu.
+
+
+```{r test pretpostavki - normalnost}
+
+require(nortest)
+lillie.test(creditdata$income)
+
+lillie.test(creditdata$income[creditdata$education=='elementary'])
+lillie.test(creditdata$income[creditdata$education=='secondary'])
+lillie.test(creditdata$income[creditdata$education=='university'])
+
+hist(creditdata$income[creditdata$education=='elementary'])
+hist(creditdata$income[creditdata$education=='secondary'])
+hist(creditdata$income[creditdata$education=='university'])
+
+```
 ```
 
-```{r}
-fisher.test(tbl, simulate.p.value=T)
-```
-# P-value je malen, < 0.05, odbacujemo H0
