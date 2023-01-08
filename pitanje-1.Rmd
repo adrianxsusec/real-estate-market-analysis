@@ -18,7 +18,7 @@ dataset <- read_csv("preprocessed_data.csv")
 Postavljamo hipoteze:
 
 Ho: broj katova kuće ne ovisi o obliku zemljišne čestice
-H1:broj katova kuće ovisi o obliku zemljišne čestice
+H1: broj katova kuće ovisi o obliku zemljišne čestice
 
 Učitavamo dataset u varijablu df sa kojom ćemo dalje raditi.
 ```{r}
@@ -27,7 +27,7 @@ df <- dataset
 ```
 
 
-Grupiramo vrijednosti podataka u stupcu. Stambeni objekti koji imaju 1.5 kat tretiramo kao da imaju 1 kat, a objekti koji imaju 2.5 kata tretiramo kao da imaju 2 kata. 
+Grupiramo vrijednosti podataka u stupcu. Stambene objekte koji imaju 1.5 kat tretiramo kao da imaju 1 kat, a objekte koji imaju 2.5 kata tretiramo kao da imaju 2 kata. 
 ```{r}
 
 df$HouseStyle <- gsub("1.5Fin", "1Story", df$HouseStyle)
@@ -49,6 +49,6 @@ table <- table(df$LotShape, df$HouseStyle)
 
 table
 
-chisq.test(df$LotShape, df$HouseStyle, simulate.p.value = TRUE, B = 20000)
+chisq.test(df$LotShape, df$HouseStyle, simulate.p.value = TRUE, B = 1000)
 
 ```
