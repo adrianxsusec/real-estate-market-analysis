@@ -19,13 +19,14 @@ Dani su podaci veličine podruma i kvart u kojoj se nekretnina nalazi.
 
 ```{r}
 length(unique(neighbourhood))
-unique_neighbourhood <- unique(neighbourhood)
+unique_neighbourhood <- sort(unique(neighbourhood))
+unique_neighbourhood
 ```
-Postoji 25 različitih kvartova za koje ispitujemo ako utječu na veličinu podruma
+Postoji 25 različitih kvartova za koje ispitujemo utječu li na veličinu podruma
 
 # ANOVA
 
-Koristit ćemo statistički test ANOVA kako bi testirali sredinu više populacija. U našem slučaju imamo 25 kvartova gdje ćemo za svaki kvart izračunati sredjnu veličine garaže. 
+Koristit ćemo statistički test ANOVA kako bi testirali sredinu više populacija. U našem slučaju imamo 25 kvartova gdje ćemo za svaki kvart izračunati srednju veličine garaže. 
 
 #U analizi varijance pretpostavlja se da je ukupna varijabilnost u podatcima posljedica varijabilnosti podataka unutar svakog pojedine
 #grupe (populacije) i varijabilnosti između različitih grupa. Varijabilnost unutar pojedinog uzorka je rezultat slučajnosti, a ako
@@ -41,19 +42,53 @@ Pretpostavke ANOVA-e su:
 Provjera normalnosti može se za svaku pojedinu grupu napraviti KS testom ili Lillieforsovom inačicom KS testa. U ovom slučaju razmatrat ćemo kvart kao nezavisnu varijablu i veličinu garaže kao zavisnu varijablu.
 
 
+#basement_area = dataset$TotalBsmtSF
+#neighbourhood = dataset$Neighborhood
+
+```{r}
+install.packages("nortest")
+library(nortest)
+lillie.test(basement_area)
+```
+
+
 ```{r test pretpostavki - normalnost}
-
 require(nortest)
-lillie.test(creditdata$income)
+lillie.test(basement_area)
+unique_neighbourhood <- unique_neighbourhood[!unique_neighbourhood == "Blueste"]
+lillieT <- c()
 
-lillie.test(creditdata$income[creditdata$education=='elementary'])
-lillie.test(creditdata$income[creditdata$education=='secondary'])
-lillie.test(creditdata$income[creditdata$education=='university'])
-
-hist(creditdata$income[creditdata$education=='elementary'])
-hist(creditdata$income[creditdata$education=='secondary'])
-hist(creditdata$income[creditdata$education=='university'])
+for (n in unique_neighbourhood) {
+  append(lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood==n]), lillieT)
+}
 
 ```
+
+```{r test pretpostavki - homogenost varijanci}
+
+# Testiranje homogenosti varijance uzoraka Bartlettovim testom
+bartlett.test(basement_area ~ neighbourhood)
+
+basement_area_var <- c()
+for (n in unique_neighbourhood) {
+  basement_area_var <- c(basement_area_var, var((basement_area[neighbourhood==n])))
+}
+basement_area_var
+var_df <- data.frame(unique_neighbourhood, basement_area_var)
+var_df
 ```
+
+Provjerimo postoje li razlike u veličini podruma za različite razine kvartove.
+
+```{r test razlike u veličini podruma}
+
+# Graficki prikaz podataka
+boxplot(dataset$TotalBsmtSF ~ dataset$Neighborhood)
+
+# Test
+a = aov(dataset$TotalBsmtSF ~ dataset$Neighborhood)
+summary(a)
+
+```
+
 
