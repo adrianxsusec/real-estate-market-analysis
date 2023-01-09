@@ -16,14 +16,53 @@ library(dplyr)
 dataset <- read_csv("preprocessed_data.csv")
 ```
 
-
-
 ```{r}
-fit.reg = lm(BedroomAbvGr ~ SalePrice,data=dataset)
 
-fit.reg$fitted.values
+dataset1 = subset(dataset, BedroomAbvGr != 8)
 
-plot(dataset$BedroomAbvGr,dataset$SalePrice)
-lines(dataset$BedroomAbvGr,fit.reg$fitted.values,col='red')
+plot(dataset1$BedroomAbvGr,dataset1$SalePrice)
+
+quartiles = quantile(dataset1$SalePrice, probs = c(.25, .75), na.rm=FALSE)
+IQRsalePrice = IQR(dataset1$SalePrice)
+
+lower <- quartiles[1] - 1.5*IQRsalePrice
+upper <- quartiles[2] + 1.5*IQRsalePrice
+
+no_outliers = subset(dataset1, dataset1$SalePrice > lower & dataset1$SalePrice < upper)
+
+plot(no_outliers$BedroomAbvGr, no_outliers$SalePrice)
+
+dataset2 <- dataset1[names(dataset1) %in% c('SalePrice', 'BedroomAbvGr')]
+
+no_outliers %>%
+  group_by(BedroomAbvGr) %>%
+  count() -> dataset3
+
+dataset3
+
+```
+```{r}
+
+data1to4 = subset(no_outliers, no_outliers$BedroomAbvGr > 0 & no_outliers$BedroomAbvGr < 5) 
+
+plot(data1to4$SalePrice ~ data1to4$BedroomAbvGr)
+
+boxplot(SalePrice ~ BedroomAbvGr,data=data1to4)
+```
+```{r}
+
+require(nortest)
+
+bartlett.test(data1to4$SalePrice ~ data1to4$BedroomAbvGr)
+
+lillie.test(data1to4$SalePrice)
+lillie.test(data1to4$SalePrice[data1to4$BedroomAbvGr == 1])
+lillie.test(data1to4$SalePrice[data1to4$BedroomAbvGr == 2])
+lillie.test(data1to4$SalePrice[data1to4$BedroomAbvGr == 3])
+lillie.test(data1to4$SalePrice[data1to4$BedroomAbvGr == 4])
+
+aov = aov(data1to4$SalePrice ~ data1to4$BedroomAbvGr)
+
+summary(aov)
 ```
 
