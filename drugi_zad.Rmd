@@ -11,27 +11,34 @@ dataset <- read_csv("preprocessed_data.csv")
 ```{r}
 
 basement_area = dataset$TotalBsmtSF
-neighbourhood = dataset$Neighborhood
 
 quartiles = quantile(basement_area, probs=c(.25, .75), na.rm=FALSE)
 IQR = IQR(basement_area)
 lower <- quartiles[1] - 1.5*IQR
 upper <- quartiles[2] + 1.5*IQR 
 
-basement_no_outliers = subset(basement_area, basement_area > lower & basement_area < upper)
+dataset = subset(dataset, basement_area > lower & basement_area < upper)
 
-hist(basement_no_outliers, breaks = 20)
+basement_area = dataset$TotalBsmtSF
 
-
+hist(basement_area, breaks = 20)
 ```
 Dani su podaci veličine podruma i kvart u kojoj se nekretnina nalazi.
 
 ```{r}
-length(unique(neighbourhood))
-unique_neighbourhood <- sort(unique(neighbourhood))
-unique_neighbourhood
+neighbourhoods = dataset$Neighborhood
+unique_neighbourhoods <- sort(unique(neighbourhoods))
 ```
+
 Postoji 25 različitih kvartova za koje ispitujemo utječu li na veličinu podruma
+```{r}
+barplot(table(x= basement_area, y = neighbourhoods))
+```
+```{r}
+counts <- table(neighbourhoods)
+counts
+```
+
 
 # ANOVA
 
@@ -51,42 +58,49 @@ Pretpostavke ANOVA-e su:
 Provjera normalnosti može se za svaku pojedinu grupu napraviti KS testom ili Lillieforsovom inačicom KS testa. U ovom slučaju razmatrat ćemo kvart kao nezavisnu varijablu i veličinu garaže kao zavisnu varijablu.
 
 
-#basement_area = dataset$TotalBsmtSF
-#neighbourhood = dataset$Neighborhood
-
-```{r}
+```{r test pretpostavki - normalnost}
 require(nortest)
-lillie.test(basement_no_outliers)
+lillie.test(basement_area)
+
+# odbacivanje redataka koji ne podliježu normalnoj distribuciji
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="Blmngtn"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="Blueste"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="BrDale"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="BrkSide"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="ClearCr"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="CollgCr"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="Crawfor"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="Edwards"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="Gilbert"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="IDOTRR"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="MeadowV"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="Mitchel"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="NAmes"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="NoRidge"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="NPkVill"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="NridgHt"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="NWAmes"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="OldTown"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="Sawyer"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="SawyerW"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="StoneBr"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="SWISU"])
+lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="Timber"])
+#lillie.test(basement_no_outliers[dataset_no_outliers$Neighborhood=="Veenker"])
 ```
 
 
 ```{r test pretpostavki - normalnost}
-require(nortest)
-lillie.test(basement_area)
-unique_neighbourhood <- unique_neighbourhood[!unique_neighbourhood == "Blueste"]
-lillieT <- c()
-
-for (n in unique_neighbourhood) {
-  append(lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood==n]), lillieT)
-}
-
+not_normal_neighbourhoods <- c("Blueste", "CollgCr", "Crawfor", "Gilbert", "MeadowV", "NAmes", "NPkVill", "NWAmes", "Sawyer")
+nrow(dataset)
+dataset <- subset(dataset, !Neighborhood %in% not_normal_neighbourhoods)
+nrow(dataset)
 ```
 
 ```{r test pretpostavki - homogenost varijanci}
 
 # Testiranje homogenosti varijance uzoraka Bartlettovim testom
-bartlett.test(basement_area ~ neighbourhood)
-
-basement_area_var <- c()
-for (n in unique_neighbourhood) {
-  basement_area_var <- c(basement_area_var, var((basement_area[neighbourhood==n])))
-}
-basement_area_var
-var_df <- data.frame(unique_neighbourhood, basement_area_var)
-var_df
-
-sqrt(var_df$basement_area_var)
-bartlett.test(basement_area_var ~ neighbourhood)
+bartlett.test(basement_area ~ neighbourhoods)
 ```
 
 Provjerimo postoje li razlike u veličini podruma za različite razine kvartove.
@@ -94,7 +108,7 @@ Provjerimo postoje li razlike u veličini podruma za različite razine kvartove.
 ```{r test razlike u veličini podruma}
 
 # Graficki prikaz podataka
-boxplot(dataset$TotalBsmtSF ~ dataset$Neighborhood)
+boxplot(basement_area ~ neighbourhoods)
 
 # Test
 a = aov(dataset$TotalBsmtSF ~ dataset$Neighborhood)
@@ -103,3 +117,13 @@ summary(a)
 ```
 
 
+Grafički prikaz sugerira da postoji jasna razlika između grupa, što potvrđuje i ANOVA. Kako bismo procijenili model koji pomoću varijable o školovanju klijenata objašnjava njihov prihod?
+
+```{r linearni model}
+
+# Linearni model
+model = lm(basement_area ~ neighbourhoods, data = dataset)
+summary(model)
+anova(model)
+
+```
