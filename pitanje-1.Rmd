@@ -1,3 +1,8 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 # Necesarry libraries
 
 ```{r}
@@ -17,7 +22,7 @@ dataset <- read_csv("preprocessed_data.csv")
 ```
 Postavljamo hipoteze:
 
-Ho: broj katova kuće ne ovisi o obliku zemljišne čestice
+H0: broj katova kuće ne ovisi o obliku zemljišne čestice
 H1: broj katova kuće ovisi o obliku zemljišne čestice
 
 Učitavamo dataset u varijablu df sa kojom ćemo dalje raditi.
@@ -37,13 +42,20 @@ df$HouseStyle <- gsub("2.5Unf", "2Story", df$HouseStyle)
 df$HouseStyle <- gsub("SFoyer", "2Story", df$HouseStyle)
 df$HouseStyle <- gsub("SLvl", "2Story", df$HouseStyle)
 
-df
+df <- df[,c('HouseStyle', 'LotShape')]
 
-help("chisq.test")
+barplot(table(df$LotShape))
+
+barplot(table(df$HouseStyle))
+
+
+
+
+
 
 ```
 
-Prethodno spomenute hipoteze testiramo testom nezavisnoti pomoću chi testa.
+Prethodno spomenute hipoteze testiramo testom nezavisnoti pomoću chi^2 testa.
 ```{r}
 table <- table(df$LotShape, df$HouseStyle)
 
