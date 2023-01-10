@@ -18,6 +18,8 @@ dataset <- read_csv("preprocessed_data.csv")
 
 ```{r}
 
+plot(dataset$BedroomAbvGr, dataset$SalePrice)
+
 dataset1 = subset(dataset, BedroomAbvGr != 8)
 
 dataset1$ppsqm = dataset1$SalePrice / dataset1$GrLivArea
