@@ -52,3 +52,5 @@ table
 chisq.test(df$LotShape, df$HouseStyle, simulate.p.value = TRUE, B = 1000)
 
 ```
+p < 0.05
+Na temelju p vrijednosti odbacujemo hipotezu "H0:broj katova kuće ne ovisi o obliku zemljišne čestice". Prihvaćamo alternativnu hipotezu "H1: broj katova kuće ovisi o obliku zemljišne čestice" i zaključujemo da broj katova kuće ovisi o obliku zemljišne čestice.
