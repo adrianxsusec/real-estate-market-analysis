@@ -9,11 +9,20 @@ dataset <- read_csv("preprocessed_data.csv")
 ```
 
 ```{r}
+
 basement_area = dataset$TotalBsmtSF
 neighbourhood = dataset$Neighborhood
 
-basement_area
-neighbourhood
+quartiles = quantile(basement_area, probs=c(.25, .75), na.rm=FALSE)
+IQR = IQR(basement_area)
+lower <- quartiles[1] - 1.5*IQR
+upper <- quartiles[2] + 1.5*IQR 
+
+basement_no_outliers = subset(basement_area, basement_area > lower & basement_area < upper)
+
+hist(basement_no_outliers, breaks = 20)
+
+
 ```
 Dani su podaci veličine podruma i kvart u kojoj se nekretnina nalazi.
 
@@ -46,9 +55,8 @@ Provjera normalnosti može se za svaku pojedinu grupu napraviti KS testom ili Li
 #neighbourhood = dataset$Neighborhood
 
 ```{r}
-install.packages("nortest")
-library(nortest)
-lillie.test(basement_area)
+require(nortest)
+lillie.test(basement_no_outliers)
 ```
 
 
@@ -76,6 +84,9 @@ for (n in unique_neighbourhood) {
 basement_area_var
 var_df <- data.frame(unique_neighbourhood, basement_area_var)
 var_df
+
+sqrt(var_df$basement_area_var)
+bartlett.test(basement_area_var ~ neighbourhood)
 ```
 
 Provjerimo postoje li razlike u veličini podruma za različite razine kvartove.
