@@ -20,19 +20,21 @@ dataset <- read_csv("preprocessed_data.csv")
 
 dataset1 = subset(dataset, BedroomAbvGr != 8)
 
-plot(dataset1$BedroomAbvGr,dataset1$SalePrice)
+dataset1$ppsqm = dataset1$SalePrice / dataset1$GrLivArea
 
-quartiles = quantile(dataset1$SalePrice, probs = c(.25, .75), na.rm=FALSE)
-IQRsalePrice = IQR(dataset1$SalePrice)
+plot(dataset1$BedroomAbvGr,dataset1$ppsqm)
 
-lower <- quartiles[1] - 1.5*IQRsalePrice
-upper <- quartiles[2] + 1.5*IQRsalePrice
+quartiles = quantile(dataset1$ppsqm, probs = c(.25, .75), na.rm=FALSE)
+IQRppsqm = IQR(dataset1$ppsqm)
 
-no_outliers = subset(dataset1, dataset1$SalePrice > lower & dataset1$SalePrice < upper)
+lower <- quartiles[1] - 1.5*IQRppsqm
+upper <- quartiles[2] + 1.5*IQRppsqm
 
-plot(no_outliers$BedroomAbvGr, no_outliers$SalePrice)
+no_outliers = subset(dataset1, dataset1$ppsqm > lower & dataset1$ppsqm < upper)
 
-dataset2 <- dataset1[names(dataset1) %in% c('SalePrice', 'BedroomAbvGr')]
+plot(no_outliers$BedroomAbvGr, no_outliers$ppsqm)
+
+dataset2 <- dataset1[names(dataset1) %in% c('ppsqm', 'BedroomAbvGr')]
 
 no_outliers %>%
   group_by(BedroomAbvGr) %>%
@@ -45,23 +47,23 @@ dataset3
 
 data1to4 = subset(no_outliers, no_outliers$BedroomAbvGr > 0 & no_outliers$BedroomAbvGr < 5) 
 
-plot(data1to4$SalePrice ~ data1to4$BedroomAbvGr)
+plot(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
 
-boxplot(SalePrice ~ BedroomAbvGr,data=data1to4)
+boxplot(ppsqm ~ BedroomAbvGr,data=data1to4)
 ```
 ```{r}
 
 require(nortest)
 
-bartlett.test(data1to4$SalePrice ~ data1to4$BedroomAbvGr)
+bartlett.test(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
 
-lillie.test(data1to4$SalePrice)
-lillie.test(data1to4$SalePrice[data1to4$BedroomAbvGr == 1])
-lillie.test(data1to4$SalePrice[data1to4$BedroomAbvGr == 2])
-lillie.test(data1to4$SalePrice[data1to4$BedroomAbvGr == 3])
-lillie.test(data1to4$SalePrice[data1to4$BedroomAbvGr == 4])
+lillie.test(data1to4$ppsqm)
+lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 1])
+lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 2])
+lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
+lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 4])
 
-aov = aov(data1to4$SalePrice ~ data1to4$BedroomAbvGr)
+aov = aov(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
 
 summary(aov)
 ```
