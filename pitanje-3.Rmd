@@ -18,7 +18,9 @@ dataset <- read_csv("preprocessed_data.csv")
 
 ```{r}
 
-plot(dataset$BedroomAbvGr, dataset$SalePrice)
+dataset$ppsqm = dataset$SalePrice / dataset$GrLivArea
+
+plot(dataset$BedroomAbvGr, dataset$ppsqm)
 
 dataset1 = subset(dataset, BedroomAbvGr != 8)
 
@@ -64,6 +66,10 @@ lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 1])
 lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 2])
 lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
 lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 4])
+var(data1to4$ppsqm[data1to4$BedroomAbvGr == 1])
+var(data1to4$ppsqm[data1to4$BedroomAbvGr == 2])
+var(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
+var(data1to4$ppsqm[data1to4$BedroomAbvGr == 4])
 
 aov = aov(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
 
