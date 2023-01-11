@@ -8,6 +8,7 @@ output:
 ```{r}
 library(readr)
 library(dplyr)
+library(ggplot2)
 ```
 
 # Loading dataset
@@ -45,9 +46,17 @@ df$LotShape <- gsub("IR3", "IR2", df$LotShape)
 
 df
 
-``````
+```
 
 
+
+```{r}
+
+ggplot(df, aes(x = LotShape, fill = HouseStyle)) +
+  geom_bar(position = "dodge")
+```
+
+Napravit ćemo kontingencijsku tablicu i dodati joj marginalne vrijednosti.
 ```{r}
 table <- table(df$LotShape, df$HouseStyle)
 
