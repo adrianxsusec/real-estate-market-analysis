@@ -1,5 +1,120 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 #4. Zadatak
+
 ```{r}
+library(readr)
+library(dplyr)
+```
+
+# Loading dataset
+
+```{r}
+dataset <- read_csv("preprocessed_data.csv")
+```
+
+```{r micanje kvartova}
+not_normal_neighbourhoods <- c("Blueste", "Blueste", "BrDale", "ClearCr","IDOTRR", "MeadowV", "NoRidge","NPkVill","StoneBr", "SWISU","Timber", "Veenker")
+dataset <- subset(dataset, !Neighborhood %in% not_normal_neighbourhoods)
+neighbourhoods = dataset$Neighborhood
+length(neighbourhoods)
+```
+
+
+## Višestruka regresija
+
+Prije procjene modela višestruke regresije potrebno je provjeriti da pojedini parovi varijabli nisu (previše) korelirani. U principu je određena korelacija između varijabli neizbježna, ali varijable s vrlo visokom korelacijom će uzrokovati probleme u interpretaciji regresijskih rezultata.
+
+
+Regresija s jako koreliranim ulaznim varijablama će uglavnom dati neke rezultate, ali na temelju njih ne možemo donositi nikakve zaključke. U slučaju savršene linearne zavisnosti ili koreliranosti ulaznih varijabli, procjena regresijskog modela će biti nestabilna i barem jedan koeficijent će biti NA.
+
+Stoga je potrebo odabrati onaj podskup varijabli za koje smatramo da objašnjavaju različite efekte u podatcima i nisu međusobno (previše) korelirane.
+
+```{r cor}
+val_fac <- factor(dataset$ExterQual)
+exterQual1 <- unclass(val_fac)
+exterQual1
+cor(cbind(dataset$YearBuilt, dataset$GrLivArea, dataset$OverallQual)) # korelacijski koeficijenti parova regresora
+```
+
+```{r}
+multi = lm(SalePrice ~ YearBuilt +  GrLivArea + BedroomAbvGr + OverallQual, dataset)
+summary(multi)
 
 ```
+
+
+```{r visestruka regresija}
+boxplot(SalePrice ~ YearBuilt , data = dataset) #kvadratni dijagram se moze koristiti za graficki provjeriti linearnost efekta kategorijske varijable na neku izlaznu varijablu
+boxplot(SalePrice ~ GrLivArea , data = dataset) 
+boxplot(SalePrice ~ OverallQual , data = dataset) 
+boxplot(SalePrice ~ Neighborhood , data = dataset) 
+boxplot(SalePrice ~ ExterQual, data = dataset) 
+
+```
+
+
+```{r}
+dim(dataset)
+
+dataset <- dataset %>% 
+  group_by(Neighborhood) %>% 
+  mutate(Q1 = quantile(SalePrice, .25),
+         Q3 = quantile(SalePrice, .75),
+         IQR = IQR(SalePrice),
+         lower_bound = Q1 - 1.5*IQR,
+         upper_bound = Q3 + 1.5*IQR) %>%
+  filter(SalePrice > lower_bound & SalePrice < upper_bound)
+
+dim(dataset)
+dataset <- dataset %>% 
+  group_by(OverallQual) %>% 
+  mutate(Q1 = quantile(SalePrice, .25),
+         Q3 = quantile(SalePrice, .75),
+         IQR = IQR(SalePrice),
+         lower_bound = Q1 - 1.5*IQR,
+         upper_bound = Q3 + 1.5*IQR) %>%
+  filter(SalePrice > lower_bound & SalePrice < upper_bound)
+
+dim(dataset)
+
+
+ #Drugi nacin
+# datas <- split(dataset, dataset$Neighborhood)
+# data_no_outlier <- NULL
+# for (i in 1:14){
+#   Q1 <- quantile(datas[[i]]$SalePrice, .25)
+#   Q3 <- quantile(datas[[i]]$SalePrice, .75)
+#   IQR <- IQR(datas[[i]]$SalePrice)
+#   Lowers <- Q1 - 1.5*IQR
+#   Uppers <- Q3 + 1.5*IQR
+#   out <- subset(datas[[i]], datas[[i]]$SalePrice > Lowers & datas[[i]]$SalePrice < Uppers)
+#   data_no_outlier <- rbind(data_no_outlier, out)
+# }
+# dataset <- data_no_outlier
+# boxplot(SalePrice ~ Neighborhood, data = dataset)
+
+```
+
+```{r kategorijske ulazne varijable - sirove}
+
+```
+
+```{r kategorijske ulazne varijable - dummy varijable}
+
+require(fastDummies)
+dataset <- dummy_cols(dataset,select_columns='OverallQual')
+dataset <- dummy_cols(dataset,select_columns='Neighborhood')
+dataset
+
+#procjena modela s dummy varijablama
+fit.multi.d = lm(SalePrice ~ YearBuilt +GrLivArea + OverallQual_3 + OverallQual_4 + OverallQual_5 + OverallQual_6 + OverallQual_7 + OverallQual_8 + OverallQual_9 + Neighborhood_Blmngtn + Neighborhood_BrkSide + Neighborhood_CollgCr + Neighborhood_Crawfor + Neighborhood_Edwards + Neighborhood_Gilbert + Neighborhood_Mitchel + Neighborhood_NAmes + Neighborhood_NridgHt + + Neighborhood_NWAmes + Neighborhood_OldTown + Neighborhood_Sawyer + Neighborhood_SawyerW +  Neighborhood_Somerst, dataset)
+summary(fit.multi.d)
+
+```
+
+
 

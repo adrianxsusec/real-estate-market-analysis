@@ -17,6 +17,7 @@ library(dplyr)
 
 ```{r}
 dataset <- read_csv("preprocessed_data.csv")
+summary(dataset)
 ```
 
 
@@ -47,11 +48,12 @@ houseStyle_factor <- factor(houseStyle, levels = unique(houseStyle), labels = c(
 houseStyle
 houseStyle_factor
 plot(houseStyle_factor, dataset$SalePrice)
-dataset$Utilities
+dataset$Utilities #Nebitno
 ```
 
 ```{r}
 price <- dataset$SalePrice
+price
 yearBuilt <- (dataset$YearBuilt)
 yearBuilt
 fit.date = lm(dataset$SalePrice ~ yearBuilt, data=dataset$SalePrice.data)
