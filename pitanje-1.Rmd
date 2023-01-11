@@ -1,3 +1,8 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 # Necesarry libraries
 
 ```{r}
@@ -36,20 +41,39 @@ df$HouseStyle <- gsub("2.5Fin", "2Story", df$HouseStyle)
 df$HouseStyle <- gsub("2.5Unf", "2Story", df$HouseStyle)
 df$HouseStyle <- gsub("SFoyer", "2Story", df$HouseStyle)
 df$HouseStyle <- gsub("SLvl", "2Story", df$HouseStyle)
+df$LotShape <- gsub("IR3", "IR2", df$LotShape)
 
 df
 
-help("chisq.test")
+``````
 
-```
 
-Prethodno spomenute hipoteze testiramo testom nezavisnoti pomoću chi testa.
 ```{r}
 table <- table(df$LotShape, df$HouseStyle)
 
-table
+margins_tbl = addmargins(table)
+print(margins_tbl)
+```
 
-chisq.test(df$LotShape, df$HouseStyle, simulate.p.value = TRUE, B = 1000)
+`chisq.test()` se može izvršiti samo ako očekivana frekvencija pojedinog razreda iznosi najmanje 5. Pretpostavka testa je da je ovo uvjet zadovoljen, stoga se prije provođenja testa mora provjeriti da li je očekivana frekvencija pojedinog razreda veća ili jednaka 5.
+```{r}
+
+for (col_names in colnames(margins_tbl)){
+  for (row_names in rownames(margins_tbl)){
+    if (!(row_names == 'Sum' | col_names == 'Sum') ){
+      cat('Očekivane frekvencije za ',col_names,'-',row_names,': ',(margins_tbl[row_names,'Sum'] * margins_tbl['Sum',col_names]) / margins_tbl['Sum','Sum'],'\n')
+    }
+  }
+}
+
+```
+
+
+Sve očekivane frekvencije su veće od 5. Možemo nastaviti sa`chisq.test()` testom.
+Prethodno spomenute hipoteze testiramo testom nezavisnoti pomoću chi testa.
+```{r}
+
+test = chisq.test(df$LotShape, df$HouseStyle, simulate.p.value = TRUE, B = 1000)
 
 ```
 p < 0.05
