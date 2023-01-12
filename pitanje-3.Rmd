@@ -15,6 +15,7 @@ library(dplyr)
 ```{r}
 dataset <- read_csv("preprocessed_data.csv")
 ```
+## Pitanje 3: 
 
 ```{r}
 dataset$ppsqm = dataset$SalePrice / dataset$GrLivArea
@@ -69,6 +70,11 @@ data1to4 = subset(no_outliers, no_outliers$BedroomAbvGr > 0 & no_outliers$Bedroo
 plot(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
 
 boxplot(ppsqm ~ BedroomAbvGr,data=data1to4)
+
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 1])
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 2])
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 4], breaks = 20)
 ```
 ```{r}
 require(nortest)
