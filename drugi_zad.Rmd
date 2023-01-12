@@ -7,17 +7,18 @@ output:
 
 ```{r}
 library(readr)
+require(dplyr)
 ```
 
 ```{r}
 dataset <- read_csv("preprocessed_data.csv")
 ```
 
-2 Ovisi li veličina podruma o kvartu u gradu?
+2. Ovisi li veličina podruma o kvartu u gradu?
 
-U podacima postoje varijable TotalBsmtSF te Neighborhood. TotalBsmtSF predstavlja veličinu podruma za pojedinu nekretninu u kvatratnim stopama. Neighborhood predstavlja kvart kojoj nekretnina pripada. Nekretnine s veličinom podruma 0 kvadratnih stopa nećemo koristiti u analizi.
+U podacima postoje varijable TotalBsmtSF te Neighborhood. TotalBsmtSF predstavlja veličinu podruma za pojedinu nekretninu u kvadratnim stopama. Neighborhood predstavlja kvart kojoj nekretnina pripada. Nekretnine s veličinom podruma 0 kvadratnih stopa nećemo koristiti u analizi.
 
-Kako bismo odgovorili na ovo istraživačko pitanje, koristit ćemo metodu ANOVA, odnosno analizirat ćemo varijance. ANOVA je metoda kojom testiramo sredine više populacija. U analizi varijance pretpostavlja se da je ukupna varijabilnost u podatcima posljedica varijabilnosti podataka unutar svake pojedine populacije i varijabilnosti između različitih grupa. Varijabilnost unutar pojedinog uzorka je rezultat slučajnosti, a ako postoje razlike u sredinama populacija, one će biti odražene u varijabilnosti među grupama. Analizom varijance htjeli bismo istražutu je li razlika između varijanci slučajna ili nam je statistički značajna.
+Kako bismo odgovorili na ovo istraživačko pitanje, koristit ćemo metodu ANOVA, odnosno analizirat ćemo varijance. ANOVA je metoda kojom testiramo sredine više populacija. U analizi varijance pretpostavlja se da je ukupna varijabilnost u podatcima posljedica varijabilnosti podataka unutar svake pojedine populacije i varijabilnosti između različitih grupa. Varijabilnost unutar pojedinog uzorka je rezultat slučajnosti, a ako postoje razlike u sredinama populacija, one će biti odražene u varijabilnosti među grupama. Analizom varijance htjeli bismo istražiti je li razlika između varijanci slučajna ili nam je statistički značajna.
 
 Budući da u našem pitanju ispitujemo veličinu podruma za različite kvartove, koristit ćemo jedno-faktorski ANOVA model. U jednofaktorskom ANOVA modelu razmatra se utjecaj jednog faktora koji ima k razina.
 
@@ -53,75 +54,70 @@ SSA &= n \sum_{i=1}^k (\bar{x}_{i.} - \bar{x}_{..})^2 = \text{treatment sum of s
 SSE &= \sum_{i=1}^k \sum_{j=1}^n (x_{ij} - \bar{x}_{i.})^2 = \text{error sum of squares, varijabilnost unutar grupa}
 \end{aligned}$$
 
-Nadalje, Pretpostavke metode ANOVA su: nezavisnost pojedinih podataka u uzorcima, normalna razdioba podataka i homogenost varijanci među populacijama.
+Nadalje, pretpostavke metode ANOVA su: nezavisnost pojedinih podataka u uzorcima, normalna razdioba podataka i homogenost varijanci među populacijama.
 
 Provjera normalnosti može se za svaku pojedinu grupu napraviti Kolmogorov-Smirnov testom ili Lillieforsovom inačicom navedenog testa. U ovom slučaju razmatrat ćemo veličinu kvarta kao nezavisnu varijablu i veličinu kvarta kao zavisnu varijablu.
 
-Kako bi provjerili normalnost podataka za veličinu podruma, prvo moramo pripremiti i počistiti podatke 
+Kako bi provjerili normalnost podataka za veličinu podruma, prvo moramo pripremiti i počistiti podatke. 
 
-```{r priprema podataka za veličinu podruma}
-# Priprema i čišćenje podataka
-basement_area = dataset$TotalBsmtSF
-
-# Grafički prikaz podataka za veličinu podruma
-hist(basement_area, breaks = 20)
-qqnorm(basement_area)
-qqline(basement_area)
+```{r priprema podataka za velicinu podruma}
+# Graficki prikaz podataka za velicinu podruma
+hist(dataset$TotalBsmtSF, breaks = 40, main="Veličine podruma nekretnina",xlab="Veličina podruma",
+     ylab="Frekvencije", col="#69b3a2", border="white")
+qqnorm(dataset$TotalBsmtSF, col="#69b3a2")
+qqline(dataset$TotalBsmtSF)
 ```
 
 Očito je kako podaci nisu normalni pa ćemo maknuti outliere. Najveći problem predstavljaju podrumi iznad 3000 kvadratnih stopa i oni čija je vrijednost 0. 
 
 ```{r ciscenje podataka za velicinu podruma}
+
 # Micanje outliera
-quartiles = quantile(basement_area, probs=c(.25, .75), na.rm=FALSE)
-IQR = IQR(basement_area)
+quartiles = quantile(dataset$TotalBsmtSF, probs=c(.25, .75), na.rm=FALSE)
+IQR = IQR(dataset$TotalBsmtSF)
 lower <- quartiles[1] - 1.5*IQR
 upper <- quartiles[2] + 1.5*IQR 
 
-dataset = subset(dataset, basement_area > lower & basement_area < upper)
-basement_area = dataset$TotalBsmtSF
+dataset = subset(dataset, dataset$TotalBsmtSF > lower & dataset$TotalBsmtSF < upper)
 
-# Grafički prikaz podataka nakon micanja outliera
-hist(basement_area, breaks = 20)
-qqnorm(basement_area)
-qqline(basement_area)
+# Graficki prikaz podataka nakon micanja outliera
+hist(dataset$TotalBsmtSF, breaks = 20, main="Veličine podruma nekretnina",xlab="Veličina podruma",
+     ylab="Frekvencije", col="#69b3a2", border="white")
+qqnorm(dataset$TotalBsmtSF, col="#69b3a2")
+qqline(dataset$TotalBsmtSF)
 ```
 
-Nadalje, moramo provjeriti ukoliko postoje kvartovi u kojima se nalaze nekretnine koje bi mogle utjecati na daljnju analizu zbog nedovoljne količine podataka
+Podaci za veličinu podruma sada izgledaju normalnije. Osim veličine podruma, moramo provjeriti postoje li kvartovi u kojima se nalaze nekretnine koje bi mogle utjecati na daljnju analizu zbog nedovoljne količine podataka.
 
 ```{r priprema podataka za kvartove}
-neighbourhoods = dataset$Neighborhood
-unique_neighbourhoods <- sort(unique(neighbourhoods))
+unique_neighbourhoods <- sort(unique(dataset$Neighborhood))
 
 # Broj kvartova u datasetu
 length(unique_neighbourhoods)
 
 # Prikaz nekretnina po kvartovima
-barplot(table(x= basement_area, y = neighbourhoods))
+dataset %>%
+  group_by(Neighborhood) %>%
+  count() -> grouped_neighborhoods
 
-counts <- table(neighbourhoods)
-counts
+barplot(grouped_neighborhoods$n, names.arg=grouped_neighborhoods$Neighborhood, col="#69b3a2", border = "white", las=3)
+
+table(dataset$Neighborhood)
 ```
 
-Iz daljnje analize maknut ćemo kvartove koji imaju manje od 50 nekretnina kako bi bili sigurniji u normalnost podataka
+Grafičkim i tabličnim prikazom smo dobili broj nekretnina po kvartu. Iz daljnje analize maknut ćemo kvartove koji imaju manje od 50 nekretnina kako bi bili sigurniji u vjerodostojnosti podataka.
 
 ```{r ciscenje podataka za kvartove}
 # micanje kvartova koji imaju manje od 50 nekretnina
 not_normal_neighbourhoods <- c("Blmngtn", "Blueste", "BrDale", "ClearCr","IDOTRR", "MeadowV","Mitchel", "NoRidge","NPkVill","StoneBr", "SWISU","Timber", "Veenker")
 
 dataset <- subset(dataset, !Neighborhood %in% not_normal_neighbourhoods)
-neighbourhoods = dataset$Neighborhood
-length(unique(neighbourhoods))
+length(unique(dataset$Neighborhood))
 ```
 
-Nakon dodatnog čišćenja, preostaje nam 12 kvartove koji su nam važni za nastavak analize. Sada ćemo maknuti outliere u veličini podruma za pojedini kvart.
+Nakon dodatnog čišćenja, preostaje nam 12 kvartova koji su nam važni za nastavak analize. Sada ćemo maknuti outliere za pojedini kvart.
 
-```{r}
-require(dplyr)
-```
-
-```{r}
-# cistimo outliere za pojedinačan kvart
+```{r ciscenje podataka za kvartove}
 dataset <- dataset %>% 
   group_by(Neighborhood) %>% 
   mutate(Q1 = quantile(TotalBsmtSF, .25),
@@ -132,12 +128,17 @@ dataset <- dataset %>%
   filter(TotalBsmtSF > lower_bound & TotalBsmtSF < upper_bound)
 ```
 
-```{r}
-barplot(table(x= dataset$TotalBsmtSF, y = dataset$Neighborhood))
-sort(unique(dataset$Neighborhood))
+```{r graficki prikaz preostalih kvartova}
+dataset %>%
+  group_by(Neighborhood) %>%
+  count() -> grouped_neighborhoods
+
+barplot(grouped_neighborhoods$n, names.arg=grouped_neighborhoods$Neighborhood, col="#69b3a2", border = "white", las=3)
 ```
 
-Nakon čišćenja podataka, možemo provesti Lillieforseov test
+Možemo vidjeti kako sada više nema kvartova s manje od 50 nekretnina. 
+
+Nakon čišćenja svih podataka, provest ćemo Lillieforseov test za sve veličine podruma i veličine podruma po kvartovima.
 
 ```{r test pretpostavki - normalnost}
 require(nortest)
@@ -157,7 +158,7 @@ lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="SawyerW"])
 lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Somerst"])
 ```
 
-Iz rezultata Lillieforsove inačice Kolmogorov-Smirnov testa vidimo da podaci nisu normalne razdiobe. Ukoliko gledamo normalnost veličine podruma unutar kvarta, možemo vidjeti da su unutar šest kvartova od dvanaest podaci normalno distribuirani.
+Iz rezultata Lillieforsove inačice Kolmogorov-Smirnov testa vidimo da podaci nisu normalne razdiobe jer je p-vrijednost približna 0. Ako gledamo normalnost veličine podruma unutar kvarta, vidimo da su unutar šest kvartova podaci ipak normalno distribuirani.
 
 Što se tiče homogenosti varijanci različitih populacija, potrebno je testirati:
 $$ \begin{aligned}
@@ -170,17 +171,17 @@ $$ \begin{aligned}
 bartlett.test(dataset$TotalBsmtSF ~ dataset$Neighborhood)
 ```
 
-Bartlettovim testom nezavisnosti dobili smo p-vrijednost iznimno malu što nam sugerira da postoje barem dva kvarta koja imaju različitu varijancu za veličinu podruma. U to se možemo uvjeriti i grafički.
+Bartlettovim testom nezavisnosti dobili smo iznimno malu p-vrijednost što nam sugerira da postoje barem dva kvarta koja imaju različitu varijancu za veličinu podruma. U to se možemo uvjeriti i grafički.
 
-```{r test razlike u veličini podruma}
+```{r test razlike u velicini podruma}
 
 # Graficki prikaz podataka
-boxplot(dataset$TotalBsmtSF ~ dataset$Neighborhood)
-
+par(mar=c(5.1, 5.1, 4.1, 2.1), mgp=c(4,1,0))
+boxplot(dataset$TotalBsmtSF ~ dataset$Neighborhood, col="#69b3a2", xlab = "Kvartovi", ylab="Površina podruma", las=3)
+        
 # Test
 a = aov(dataset$TotalBsmtSF ~ dataset$Neighborhood)
 summary(a)
-
 ```
 
 Grafički prikaz sugerira da postoji jasna razlika u veličinama podruma za pojedinačni kvart, što potvrđuje i ANOVA.
