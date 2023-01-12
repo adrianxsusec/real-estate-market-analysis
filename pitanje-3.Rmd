@@ -3,7 +3,7 @@ output:
   pdf_document: default
   html_document: default
 ---
-# Necesarry libraries
+# Necessary libraries
 
 ```{r}
 library(readr)
@@ -17,9 +17,17 @@ dataset <- read_csv("preprocessed_data.csv")
 ```
 
 ## Pitanje 3: Uvjetuje li broj spavaćih soba cijenu kvadrata nekretnine?
-Naš dataset ne sadržava cijenu po kvadratu, tj. kvadratnoj stopi (ft^2^) za nekretninu, tako da ćemo tu vrijednost izračunati dijeljenjem cijene po kojoj je prodana sa stupcem GrLivArea, što je kvadratura područja za stanare.
+Naš dataset ne sadržava cijenu po kvadratu, tj. kvadratnoj stopi ($ft^2$) za nekretninu, tako da ćemo tu vrijednost izračunati dijeljenjem cijene po kojoj je prodana sa stupcem GrLivArea, što je kvadratura područja za stanare.
 
+Za testiranje postavljamo hipoteze $H_0$ i alternativu $H_1$. Razmatramo utjecaj broja spavaćih soba u nekretnini na cijenu kvadrata nekretnine.
 
+Analizom varijance testiramo:
+$$ \begin{aligned}
+  H_0 & : \mu_1 = \mu_2 = \ldots = \mu_k \\
+  H_1 & : \text{barem dvije sredine cijena po kvadratu nisu iste}.
+\end{aligned} $$
+
+Kako bismo dobili dojam o cijelom datasetu potrebnih podataka, plotat ćemo cijenu kvadrata ovisno o broju spavaćih soba u nekretnini.
 
 ```{r}
 dataset$ppsqm = dataset$SalePrice / dataset$GrLivArea
@@ -27,16 +35,17 @@ plot(dataset$BedroomAbvGr, dataset$ppsqm)
 ```
 Ovdje možemo vidjeti distribuciju obzirom na cijenu kvadrata po broju spavaćih soba. Za provođenje testiranja mičemo stan sa 8 soba obzirom da imamo jednu vrijednost, što nam statistički ne pridonosi previše obzirom na malu veličinu uzorka.
 
+Nakon toga napravit ćemo boxplot kako bismo dobili dojam o sredimama podkategorija po broju spavačih soba, te Q-Q Plot kako bismo procijenili normalnost cjelokupnog dataseta.
 
 ```{r}
 dataset1 = subset(dataset, BedroomAbvGr != 8)
-dataset1$ppsqm = dataset1$SalePrice / dataset1$GrLivArea
 plot(dataset1$BedroomAbvGr,dataset1$ppsqm)
 boxplot(dataset1$ppsqm ~ dataset1$BedroomAbvGr)
 qqnorm(dataset1$ppsqm)
 qqline(dataset1$ppsqm)
+hist(dataset1$ppsqm)
 ```
-Podatke ćemo očistiti od outliera.
+Vidimo da krajevi na Q-Q Plotu odstupaju od očekivane linije, stoga ćemo podatke očistiti od outliera tako da maknemo sve vrijednosti koje su veće od $Q3+ 1.5IQR$, te sve koje su niže od $Q1- 1.5IQR$. Na histogramu također vidimo kako imamo distribuciju zakrivljenu udesno.
 
 ```{r}
 quartiles = quantile(dataset1$ppsqm, probs = c(.25, .75), na.rm=FALSE)
@@ -51,8 +60,9 @@ plot(no_outliers$BedroomAbvGr, no_outliers$ppsqm)
 
 qqnorm(no_outliers$ppsqm)
 qqline(no_outliers$ppsqm)
+hist(no_outliers$ppsqm)
 ```
-Prema Q-Q plotu dobili smo podatke koji zadovoljavaju pretpostavku normalnosti cijelog dataseta cijena po kvadratu.
+Prema Q-Q plotu dobili smo podatke koji su bolji od podataka prije čišćenja te zadovoljavaju pretpostavku normalnosti cijelog dataseta cijena po kvadratu. Sada i histogramom vizualiziramo distribuciju koja gotovo da ne izgleda zakrivljeno.
 
 ```{r}
 dataset2 <- dataset1[names(dataset1) %in% c('ppsqm', 'BedroomAbvGr')]
@@ -65,7 +75,7 @@ dataset3
 
 ```
 
-Obzirom da stanove 0, 5 i 6 soba imamo malo podataka, njih nećemo uzeti u obzir za statističko testiranje, čime završavamo s podacima koji izgledaju ovako:
+Obzirom da stanove 0, 5 i 6 soba imamo malo podataka (između 10 i 100x manje od potkategorija s najvećim brojem podataka), njih nećemo uzeti u obzir za statističko testiranje, čime završavamo s podacima koji izgledaju ovako:
 
 ```{r}
 
@@ -73,9 +83,7 @@ data1to4 = subset(no_outliers, no_outliers$BedroomAbvGr > 0 & no_outliers$Bedroo
 
 plot(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
 
-boxplot(ppsqm ~ BedroomAbvGr,data=data1to4)
-
-hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 1])
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 1], breaks = 12)
 hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 2])
 hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
 hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 4], breaks = 20)
@@ -83,8 +91,10 @@ hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 4], breaks = 20)
 ```{r}
 require(nortest)
 
+# Testiranje homogenosti varijance uzoraka Bartlettovim testom
 bartlett.test(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
 
+# Varijance 
 var_1room = var(data1to4$ppsqm[data1to4$BedroomAbvGr == 1])
 var_2room = var(data1to4$ppsqm[data1to4$BedroomAbvGr == 2])
 var_3room = var(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
@@ -106,17 +116,26 @@ lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
 lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 4])
 ```
 
-P-value dobiven Lillieforsovim testom za svaku potkategoriju nam sugerira normalnost.
+
+P-value dobiven Lillieforsovim testom za svaku potkategoriju nam sugerira normalnost. Ovaj test smo koristili kao "sanity check", kako bismo vidjeli da nismo donijeli neke zaključke potpuno krivo. ANOVA je relativno robusna metoda na blaga odstupanja od pretpostavki normalnosti i homogenosti varijance, no ipak smo proveli testiranja kako bi smo vidjeli kolika su stvarno ta odstupanja.
+
+```{r}
+boxplot(ppsqm ~ BedroomAbvGr,data=data1to4)
+```
+
+Grafički nam prikaz sugerira da postoji razlika u sredini cijene po kvadratu između potkategorija nekretnina.
 
 Sada ćemo provesti test ANOVA-e nad setom podataka.
-
-*treba postavit hipoteze, opisat testiranje, bla bla*
 
 ```{r}
 aov = aov(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
 
 summary(aov)
 ```
-Obzirom na dobiveni p-value, na razini značajnosti od alfa=0.05 odbacujemo hipotezu H0 u korist alternativne hipoteze H1.
+Obzirom na dobiveni p-value, na razini značajnosti od $\alpha=0.05$ odbacujemo hipotezu $H_0$ u korist alternativne hipoteze $H_1$, dakle odbacujemo hipotezu da su sredine uzoraka jednake.
+
+Sada želimo procijeniti model koji bi nam pomoću varijable o broju spavaćih soba u nekretnini objasnio cijenu kvadrata iste te nekretnine.
 
 *sad treba fittat lineranu reg za model*
+
+
