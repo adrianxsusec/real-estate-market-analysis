@@ -1,0 +1,50 @@
+---
+title: "Godisnja-doba"
+output: html_document
+date: "2023-01-12"
+---
+Učitavanje potrebnih biblioteka.
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+Učitavanje baze podataka.
+```{r}
+dataset <- read_csv("preprocessed_data.csv")
+
+df <- dataset
+```
+#Pitanje: Postoji li statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba?
+
+Postavljamo hipoteze
+
+H0: ne postoji statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba
+H1: postoji statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba
+
+Napravit ćemo novi stupac u kojeg ćemo staviti godišnja doba prodaje stambenih objekata. Raspodjelu ćemo napraviti po mjesecu u kojem je stambeni objekt prodan.
+```{r}
+df$Season <- ifelse(df$MoSold %in% c(12,1,2), "Winter", 
+                    ifelse(df$MoSold %in% c(3,4,5), "Spring", 
+                           ifelse(df$MoSold %in% c(6,7,8),"Summer",
+                                  ifelse(df$MoSold %in%c(9,10,11),"Autumn", NA))))
+
+df
+```
+
+
+Prikaz količine prodanih stambenih objekata u odnosu na godišnja doba.
+```{r}
+
+ggplot(df, aes(x=reorder(Season, Season, function(x)-length(x)))) +
+geom_bar(fill='blue') +  labs(x='Season')
+```
+Napravit ćemo kontigencijsku tablicu za godišnja doba.
+```{r}
+table <- table(df$Season)
+margins_tbl = addmargins(table)
+print(margins_tbl)
+
+chisq.test(table)
+```
+Na temelju p vrijednosti(p<0.05) odbacuemo hipotezu "H0: ne postoji statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba" i prihvaćamo hipotezu "H1: postoji statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba".

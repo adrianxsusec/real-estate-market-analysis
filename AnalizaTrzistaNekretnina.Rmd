@@ -11,6 +11,7 @@ output: pdf_document
 ```{r}
 library(readr)
 library(dplyr)
+library(ggplot2)
 ```
 
 # Loading dataset
@@ -43,5 +44,16 @@ fisher.test(dataset$LotShape, dataset$HouseStyle, simulate.p.value = TRUE, B = 2
 ```
 
 
+```{r}
+df <- dataset
+
+df
+
+hist(df$LotArea[df$LotArea <= 50000])
+
+ggplot(df, aes(x=reorder(GarageType, GarageType, function(x)-length(x)))) +
+geom_bar(fill='red') +  labs(x='GarageType')
+
+```
 
 

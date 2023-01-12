@@ -78,7 +78,7 @@ LandSlope: Slope of property
        Mod	Moderate Slope	
        Sev	Severe Slope
 	
-Neighborhood: Physical locations within Ames city limits
+Neighborhood: Physical locations within Ames city limits*
 
        Blmngtn	Bloomington Heights
        Blueste	Bluestem
@@ -149,7 +149,7 @@ HouseStyle: Style of dwelling
        SFoyer	Split Foyer
        SLvl	Split Level
 	
-OverallQual: Rates the overall material and finish of the house
+OverallQual: Rates the overall material and finish of the house*
 
        10	Very Excellent
        9	Excellent
