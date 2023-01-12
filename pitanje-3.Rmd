@@ -15,7 +15,11 @@ library(dplyr)
 ```{r}
 dataset <- read_csv("preprocessed_data.csv")
 ```
-## Pitanje 3: 
+
+## Pitanje 3: Uvjetuje li broj spavaćih soba cijenu kvadrata nekretnine?
+Naš dataset ne sadržava cijenu po kvadratu, tj. kvadratnoj stopi (ft^2^) za nekretninu, tako da ćemo tu vrijednost izračunati dijeljenjem cijene po kojoj je prodana sa stupcem GrLivArea, što je kvadratura područja za stanare.
+
+
 
 ```{r}
 dataset$ppsqm = dataset$SalePrice / dataset$GrLivArea
