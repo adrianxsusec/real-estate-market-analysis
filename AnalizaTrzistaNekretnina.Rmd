@@ -25,6 +25,8 @@ summary(dataset)
 
 ```{r}
 
+barplot(table(dataset$PoolArea))
+
 dataset %>% 
   group_by(LotShape) %>%
   tally()-> lotshapefreq
@@ -33,7 +35,6 @@ lotshapefreq
 barplot(lotshapefreq$n, names.arg = lotshapefreq$LotShape, main="Lot shape frequency", xlab="Lot shape type", col="Green")
 
 # radi istu stvar
-barplot(table(dataset$LotShape))
 
 ```
 

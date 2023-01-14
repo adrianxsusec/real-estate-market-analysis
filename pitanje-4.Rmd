@@ -3,7 +3,6 @@ output:
   pdf_document: default
   html_document: default
 ---
-#4. Zadatak
 
 ```{r}
 library(readr)
@@ -17,12 +16,18 @@ dataset <- read_csv("preprocessed_data.csv")
 ```
 
 ```{r micanje kvartova}
-not_normal_neighbourhoods <- c("Blueste", "Blueste", "BrDale", "ClearCr","IDOTRR", "MeadowV", "NoRidge","NPkVill","StoneBr", "SWISU","Timber", "Veenker")
+not_normal_neighbourhoods <- c("Blmngtn", "Blueste", "BrDale", "ClearCr","IDOTRR", "MeadowV", "Mitchel",  "NoRidge","NPkVill",  "SWISU","Somerst", "StoneBr","Timber", "Veenker")
 dataset <- subset(dataset, !Neighborhood %in% not_normal_neighbourhoods)
-neighbourhoods = dataset$Neighborhood
-length(neighbourhoods)
 ```
+##4. Zadatak
+Mogu li dostupne značajke predvidjeti cijenu nekretnine?
+Za ispitivanje predviđanja cijene nekretnine koristiti ćemo višestruku regresiju gdje će cijena nekretnince(SalePrice) biti zavisna varijabla. 
 
+Kod traženja koje bi sve varijable mogle utjecati na cijenu pronašli smo nekoliko zanimljivih:
+  -> godina izgradnje(YearBuilt)
+  -> kvadratura nekretnine iznad tla(GrLivArea)
+  -> kvaliteta nekretnine (OverallQual)
+  -> kvart (Neighborhood)
 
 ## Višestruka regresija
 
@@ -34,34 +39,122 @@ Regresija s jako koreliranim ulaznim varijablama će uglavnom dati neke rezultat
 Stoga je potrebo odabrati onaj podskup varijabli za koje smatramo da objašnjavaju različite efekte u podatcima i nisu međusobno (previše) korelirane.
 
 ```{r cor}
-val_fac <- factor(dataset$ExterQual)
-exterQual1 <- unclass(val_fac)
-exterQual1
-cor(cbind(dataset$YearBuilt, dataset$GrLivArea, dataset$OverallQual)) # korelacijski koeficijenti parova regresora
-```
+neighborhood_factor <- factor(dataset$Neighborhood)
+dataset$Neighborhood <- as.numeric(neighborhood_factor)
 
-```{r}
-multi = lm(SalePrice ~ YearBuilt +  GrLivArea + BedroomAbvGr + OverallQual, dataset)
-summary(multi)
-
+dataset$ppsqm = dataset$SalePrice / dataset$GrLivArea
+# cor(dataset$YearBuilt, dataset$SalePrice)
+cor(dataset$ppsqm, dataset$SalePrice)
+cor(dataset$OverallQual, dataset$SalePrice)
+cor(neighborhood_numeric, dataset$SalePrice)
+cor(cbind(dataset$GrLivArea, dataset$OverallQual, dataset$Neighborhood)) # korelacijski koeficijenti parova regresora
 ```
 
 
 ```{r visestruka regresija}
-boxplot(SalePrice ~ YearBuilt , data = dataset) #kvadratni dijagram se moze koristiti za graficki provjeriti linearnost efekta kategorijske varijable na neku izlaznu varijablu
+ #kvadratni dijagram se moze koristiti za graficki provjeriti linearnost efekta kategorijske varijable na neku izlaznu varijablu
+# dataset <- dataset %>%
+#   group_by(YearBuilt) %>%
+#   filter(YearBuilt < 2000 & YearBuilt > 1904)
+# boxplot(SalePrice ~ YearBuilt , data = dataset)
+
+dataset <- dataset %>%
+  group_by(GrLivArea) %>%
+  filter(GrLivArea < 2000)
 boxplot(SalePrice ~ GrLivArea , data = dataset) 
 boxplot(SalePrice ~ OverallQual , data = dataset) 
 boxplot(SalePrice ~ Neighborhood , data = dataset) 
-boxplot(SalePrice ~ ExterQual, data = dataset) 
+
+# fit.YearBuilt = lm(SalePrice ~ YearBuilt , data=dataset)
+fit.GrLivArea = lm(SalePrice ~ GrLivArea , data=dataset)
+fit.OverallQual = lm(SalePrice ~ OverallQual , data=dataset)
+fit.Neighborhood = lm(SalePrice ~ Neighborhood , data=dataset)
+```
+
+
+
+```{r normalnost reziduala}
+
+# selected.model1 = fit.YearBuilt
+# hist(rstandard(selected.model1))
+# qqnorm(rstandard(selected.model1))
+# qqline(rstandard(selected.model1))
+
+selected.model2 = fit.GrLivArea
+hist(rstandard(selected.model2))
+qqnorm(rstandard(selected.model2))
+qqline(rstandard(selected.model2))
+
+selected.model3 = fit.OverallQual
+hist(rstandard(selected.model3))
+qqnorm(rstandard(selected.model3))
+qqline(rstandard(selected.model3))
+
+selected.model4 = fit.Neighborhood
+hist(rstandard(selected.model4))
+qqnorm(rstandard(selected.model4))
+qqline(rstandard(selected.model4))
+
+
 
 ```
 
 
 ```{r}
-dim(dataset)
+# outliers <- function(x) {
+# 
+#   Q1 <- quantile(x, probs=.25)
+#   Q3 <- quantile(x, probs=.75)
+#   iqr = Q3-Q1
+# 
+#  upper_limit = Q3 + (iqr*1.5)
+#  lower_limit = Q1 - (iqr*1.5)
+# 
+#  x > upper_limit | x < lower_limit
+# }
+# 
+# remove_outliers <- function(df, cols = names(df)) {
+#   for (col in cols) {
+#     df <- df[!outliers(df[[col]]),]
+#   }
+#   df
+# }
+# 
+# remove_outliers(dataset, c('Neighborhood', 'GrLivArea'))
 
-dataset <- dataset %>% 
-  group_by(Neighborhood) %>% 
+
+
+# nrow(dataset)
+# dataset <- dataset %>% 
+#   group_by(YearBuilt) %>%
+#   mutate(Q1 = quantile(SalePrice, .25),
+#          Q3 = quantile(SalePrice, .75),
+#          IQR = IQR(SalePrice),
+#          lower_bound = Q1 - 1.5*IQR,
+#          upper_bound = Q3 + 1.5*IQR) %>%
+#   filter(SalePrice > lower_bound & SalePrice < upper_bound)
+# nrow(dataset)
+# dataset <- dataset %>%
+#   group_by(Neighborhood) %>%
+#   mutate(Q1 = quantile(SalePrice, .25),
+#          Q3 = quantile(SalePrice, .75),
+#          IQR = IQR(SalePrice),
+#          lower_bound = Q1 - 1.5*IQR,
+#          upper_bound = Q3 + 1.5*IQR) %>%
+#   filter(SalePrice > lower_bound & SalePrice < upper_bound)
+# 
+nrow(dataset)
+dataset <- dataset %>%
+  group_by(GrLivArea) %>%
+  mutate(Q1 = quantile(SalePrice, .25),
+         Q3 = quantile(SalePrice, .75),
+         IQR = IQR(SalePrice),
+         lower_bound = Q1 - 1.5*IQR,
+         upper_bound = Q3 + 1.5*IQR) %>%
+  filter(SalePrice > lower_bound & SalePrice < upper_bound)
+nrow(dataset)
+dataset <- dataset %>%
+  group_by(OverallQual) %>%
   mutate(Q1 = quantile(SalePrice, .25),
          Q3 = quantile(SalePrice, .75),
          IQR = IQR(SalePrice),
@@ -69,18 +162,7 @@ dataset <- dataset %>%
          upper_bound = Q3 + 1.5*IQR) %>%
   filter(SalePrice > lower_bound & SalePrice < upper_bound)
 
-dim(dataset)
-dataset <- dataset %>% 
-  group_by(OverallQual) %>% 
-  mutate(Q1 = quantile(SalePrice, .25),
-         Q3 = quantile(SalePrice, .75),
-         IQR = IQR(SalePrice),
-         lower_bound = Q1 - 1.5*IQR,
-         upper_bound = Q3 + 1.5*IQR) %>%
-  filter(SalePrice > lower_bound & SalePrice < upper_bound)
-
-dim(dataset)
-
+nrow(dataset)
 
  #Drugi nacin
 # datas <- split(dataset, dataset$Neighborhood)
@@ -99,11 +181,42 @@ dim(dataset)
 
 ```
 
-```{r kategorijske ulazne varijable - sirove}
+```{r ponovna provjera}
+# fit.YearBuilt = lm(SalePrice ~ YearBuilt , data=dataset)
+fit.GrLivArea = lm(SalePrice ~ GrLivArea , data=dataset)
+fit.OverallQual = lm(SalePrice ~ OverallQual , data=dataset)
+fit.Neighborhood = lm(SalePrice ~ Neighborhood , data=dataset)
+
+
+# selected.model1 = fit.YearBuilt
+# hist(rstandard(selected.model1))
+# qqnorm(rstandard(selected.model1)) 
+# qqline(rstandard(selected.model1))
+
+selected.model2 = fit.GrLivArea
+hist(rstandard(selected.model2))
+qqnorm(rstandard(selected.model2)) 
+qqline(rstandard(selected.model2))
+
+selected.model3 = fit.OverallQual
+hist(rstandard(selected.model3))
+qqnorm(rstandard(selected.model3)) 
+qqline(rstandard(selected.model3))
+
+selected.model4 = fit.Neighborhood
+hist(rstandard(selected.model4))
+qqnorm(rstandard(selected.model4)) 
+qqline(rstandard(selected.model4))
 
 ```
 
 ```{r kategorijske ulazne varijable - dummy varijable}
+
+# boxplot(SalePrice ~ YearBuilt , data = dataset)
+boxplot(SalePrice ~ GrLivArea , data = dataset) 
+boxplot(SalePrice ~ OverallQual , data = dataset) 
+boxplot(SalePrice ~ Neighborhood , data = dataset)
+
 
 require(fastDummies)
 dataset <- dummy_cols(dataset,select_columns='OverallQual')
@@ -111,10 +224,14 @@ dataset <- dummy_cols(dataset,select_columns='Neighborhood')
 dataset
 
 #procjena modela s dummy varijablama
-fit.multi.d = lm(SalePrice ~ YearBuilt +GrLivArea + OverallQual_3 + OverallQual_4 + OverallQual_5 + OverallQual_6 + OverallQual_7 + OverallQual_8 + OverallQual_9 + Neighborhood_Blmngtn + Neighborhood_BrkSide + Neighborhood_CollgCr + Neighborhood_Crawfor + Neighborhood_Edwards + Neighborhood_Gilbert + Neighborhood_Mitchel + Neighborhood_NAmes + Neighborhood_NridgHt + + Neighborhood_NWAmes + Neighborhood_OldTown + Neighborhood_Sawyer + Neighborhood_SawyerW +  Neighborhood_Somerst, dataset)
+fit.multi.d = lm(SalePrice ~ GrLivArea + OverallQual_3 + OverallQual_4 + OverallQual_5 + OverallQual_6 + OverallQual_7 + Neighborhood, dataset)
 summary(fit.multi.d)
-
 ```
+
+
+#Zaključak
+Godina izgradnje, kvadratura, kvaliteta i kvart u kojem se nalazi nekretnina uvelike može utjecati na cijenu.
+
 
 
 
