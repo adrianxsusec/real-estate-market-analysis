@@ -78,31 +78,31 @@ IQR = IQR(dataset$TotalBsmtSF)
 lower <- quartiles[1] - 1.5*IQR
 upper <- quartiles[2] + 1.5*IQR 
 
-dataset = subset(dataset, dataset$TotalBsmtSF > lower & dataset$TotalBsmtSF < upper)
+dataset_pit2 = subset(dataset, dataset$TotalBsmtSF > lower & dataset$TotalBsmtSF < upper)
 
 # Graficki prikaz podataka nakon micanja outliera
-hist(dataset$TotalBsmtSF, breaks = 20, main="Veličine podruma nekretnina",xlab="Veličina podruma",
+hist(dataset_pit2$TotalBsmtSF, breaks = 20, main="Veličine podruma nekretnina",xlab="Veličina podruma",
      ylab="Frekvencije", col="#69b3a2", border="white")
-qqnorm(dataset$TotalBsmtSF, col="#69b3a2")
-qqline(dataset$TotalBsmtSF)
+qqnorm(dataset_pit2$TotalBsmtSF, col="#69b3a2")
+qqline(dataset_pit2$TotalBsmtSF)
 ```
 
 Podaci za veličinu podruma sada izgledaju normalnije. Osim veličine podruma, moramo provjeriti postoje li kvartovi u kojima se nalaze nekretnine koje bi mogle utjecati na daljnju analizu zbog nedovoljne količine podataka.
 
 ```{r priprema podataka za kvartove}
-unique_neighbourhoods <- sort(unique(dataset$Neighborhood))
+unique_neighbourhoods <- sort(unique(dataset_pit2$Neighborhood))
 
 # Broj kvartova u datasetu
 length(unique_neighbourhoods)
 
 # Prikaz nekretnina po kvartovima
-dataset %>%
+dataset_pit2 %>%
   group_by(Neighborhood) %>%
   count() -> grouped_neighborhoods
 
 barplot(grouped_neighborhoods$n, names.arg=grouped_neighborhoods$Neighborhood, col="#69b3a2", border = "white", las=3)
 
-table(dataset$Neighborhood)
+table(dataset_pit2$Neighborhood)
 ```
 
 Grafičkim i tabličnim prikazom smo dobili broj nekretnina po kvartu. Iz daljnje analize maknut ćemo kvartove koji imaju manje od 50 nekretnina kako bi bili sigurniji u vjerodostojnosti podataka.
@@ -111,14 +111,14 @@ Grafičkim i tabličnim prikazom smo dobili broj nekretnina po kvartu. Iz daljnj
 # micanje kvartova koji imaju manje od 50 nekretnina
 not_normal_neighbourhoods <- c("Blmngtn", "Blueste", "BrDale", "ClearCr","IDOTRR", "MeadowV","Mitchel", "NoRidge","NPkVill","StoneBr", "SWISU","Timber", "Veenker")
 
-dataset <- subset(dataset, !Neighborhood %in% not_normal_neighbourhoods)
-length(unique(dataset$Neighborhood))
+dataset <- subset(dataset_pit2, !Neighborhood %in% not_normal_neighbourhoods)
+length(unique(dataset_pit2$Neighborhood))
 ```
 
 Nakon dodatnog čišćenja, preostaje nam 12 kvartova koji su nam važni za nastavak analize. Sada ćemo maknuti outliere za pojedini kvart.
 
 ```{r ciscenje podataka za kvartove}
-dataset <- dataset %>% 
+dataset_pit2 <- dataset_pit2 %>% 
   group_by(Neighborhood) %>% 
   mutate(Q1 = quantile(TotalBsmtSF, .25),
          Q3 = quantile(TotalBsmtSF, .75),
@@ -129,7 +129,7 @@ dataset <- dataset %>%
 ```
 
 ```{r graficki prikaz preostalih kvartova}
-dataset %>%
+dataset_pit2 %>%
   group_by(Neighborhood) %>%
   count() -> grouped_neighborhoods
 
@@ -142,20 +142,20 @@ Nakon čišćenja svih podataka, provest ćemo Lillieforseov test za sve veliči
 
 ```{r test pretpostavki - normalnost}
 require(nortest)
-lillie.test(dataset$TotalBsmtSF)
+lillie.test(dataset_pit2$TotalBsmtSF)
 
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="BrkSide"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="CollgCr"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Crawfor"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Edwards"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Gilbert"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="NAmes"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="NridgHt"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="NWAmes"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="OldTown"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Sawyer"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="SawyerW"])
-lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Somerst"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="BrkSide"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="CollgCr"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Crawfor"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Edwards"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Gilbert"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="NAmes"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="NridgHt"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="NWAmes"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="OldTown"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Sawyer"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="SawyerW"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Somerst"])
 ```
 
 Iz rezultata Lillieforsove inačice Kolmogorov-Smirnov testa vidimo da podaci nisu normalne razdiobe jer je p-vrijednost približna 0. Ako gledamo normalnost veličine podruma unutar kvarta, vidimo da su unutar šest kvartova podaci ipak normalno distribuirani.
@@ -168,7 +168,7 @@ $$ \begin{aligned}
 
 ```{r test pretpostavki - homogenost varijanci}
 # Testiranje homogenosti varijance uzoraka Bartlettovim testom
-bartlett.test(dataset$TotalBsmtSF ~ dataset$Neighborhood)
+bartlett.test(dataset_pit2$TotalBsmtSF ~ dataset_pit2$Neighborhood)
 ```
 
 Bartlettovim testom nezavisnosti dobili smo iznimno malu p-vrijednost što nam sugerira da postoje barem dva kvarta koja imaju različitu varijancu za veličinu podruma. U to se možemo uvjeriti i grafički.
@@ -177,10 +177,10 @@ Bartlettovim testom nezavisnosti dobili smo iznimno malu p-vrijednost što nam s
 
 # Graficki prikaz podataka
 par(mar=c(5.1, 5.1, 4.1, 2.1), mgp=c(4,1,0))
-boxplot(dataset$TotalBsmtSF ~ dataset$Neighborhood, col="#69b3a2", xlab = "Kvartovi", ylab="Površina podruma", las=3)
+boxplot(dataset_pit2$TotalBsmtSF ~ dataset_pit2$Neighborhood, col="#69b3a2", xlab = "Kvartovi", ylab="Površina podruma", las=3)
         
 # Test
-a = aov(dataset$TotalBsmtSF ~ dataset$Neighborhood)
+a = aov(dataset_pit2$TotalBsmtSF ~ dataset_pit2$Neighborhood)
 summary(a)
 ```
 
