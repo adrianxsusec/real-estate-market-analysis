@@ -13,7 +13,7 @@ library(dplyr)
 # Loading dataset
 
 ```{r}
-dataset <- read_csv("preprocessed_data.csv")
+dataset_pit3 <- read_csv("preprocessed_data.csv")
 ```
 
 ## Pitanje 3: Uvjetuje li broj spavaćih soba cijenu kvadrata nekretnine?
@@ -30,15 +30,15 @@ $$ \begin{aligned}
 Kako bismo dobili dojam o cijelom datasetu potrebnih podataka, plotat ćemo cijenu kvadrata ovisno o broju spavaćih soba u nekretnini.
 
 ```{r}
-dataset$ppsqm = dataset$SalePrice / dataset$GrLivArea
-plot(dataset$BedroomAbvGr, dataset$ppsqm)
+dataset_pit3$ppsqm = dataset_pit3$SalePrice / dataset_pit3$GrLivArea
+plot(dataset_pit3$BedroomAbvGr, dataset_pit3$ppsqm)
 ```
 Ovdje možemo vidjeti distribuciju obzirom na cijenu kvadrata po broju spavaćih soba. Za provođenje testiranja mičemo stan sa 8 soba obzirom da imamo jednu vrijednost, što nam statistički ne pridonosi previše obzirom na malu veličinu uzorka.
 
 Nakon toga napravit ćemo boxplot kako bismo dobili dojam o sredimama podkategorija po broju spavačih soba, te Q-Q Plot kako bismo procijenili normalnost cjelokupnog dataseta.
 
 ```{r}
-dataset1 = subset(dataset, BedroomAbvGr != 8)
+dataset1 = subset(dataset_pit3, BedroomAbvGr != 8)
 plot(dataset1$BedroomAbvGr,dataset1$ppsqm)
 boxplot(dataset1$ppsqm ~ dataset1$BedroomAbvGr)
 qqnorm(dataset1$ppsqm)
@@ -137,5 +137,13 @@ Obzirom na dobiveni p-value, na razini značajnosti od $\alpha=0.05$ odbacujemo 
 Sada želimo procijeniti model koji bi nam pomoću varijable o broju spavaćih soba u nekretnini objasnio cijenu kvadrata iste te nekretnine.
 
 *sad treba fittat lineranu reg za model*
+
+```{r}
+model = lm(ppsqm ~ BedroomAbvGr, data = data1to4)
+summary(model)
+anova(model)
+```
+
+Za model linearne regresije koji kao prediktor koristi samo broj spavaćih soba, daje nam isti statistički zaključak kao i metoda provedena prije - dakle, u ovom je slučaju istovjetan ANOVA-i.
 
 
