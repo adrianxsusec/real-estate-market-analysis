@@ -31,7 +31,7 @@ Kako bismo dobili dojam o cijelom datasetu potrebnih podataka, plotat ćemo cije
 
 ```{r}
 dataset_pit3$ppsqm = dataset_pit3$SalePrice / dataset_pit3$GrLivArea
-plot(dataset_pit3$BedroomAbvGr, dataset_pit3$ppsqm)
+plot(dataset_pit3$BedroomAbvGr, dataset_pit3$ppsqm, col='#453F78', xlab='Broj spavaćih soba u nekretnini', ylab='Cijena po kvadratu', main = 'Cijena kvadrata nekretnine')
 ```
 Ovdje možemo vidjeti distribuciju obzirom na cijenu kvadrata po broju spavaćih soba. Za provođenje testiranja mičemo stan sa 8 soba obzirom da imamo jednu vrijednost, što nam statistički ne pridonosi previše obzirom na malu veličinu uzorka.
 
@@ -39,11 +39,11 @@ Nakon toga napravit ćemo boxplot kako bismo dobili dojam o sredimama podkategor
 
 ```{r}
 dataset1 = subset(dataset_pit3, BedroomAbvGr != 8)
-plot(dataset1$BedroomAbvGr,dataset1$ppsqm)
-boxplot(dataset1$ppsqm ~ dataset1$BedroomAbvGr)
-qqnorm(dataset1$ppsqm)
+plot(dataset1$BedroomAbvGr,dataset1$ppsqm,col='#453F78', xlab='Broj spavaćih soba u nekretnini', ylab='Cijena po kvadratu', main = 'Cijena kvadrata nekretnine')
+boxplot(dataset1$ppsqm ~ dataset1$BedroomAbvGr,  col='#453F78', xlab='Broj spavaćih soba u nekretnini', ylab='Cijena po kvadratu', main = 'Cijena kvadrata nekretnine')
+qqnorm(dataset1$ppsqm, col='#453F78', ylab='Cijena po kvadratu', xlab='Teoretski kvantili', main = 'Cijena kvadrata nekretnine -- Q-Q Plot')
 qqline(dataset1$ppsqm)
-hist(dataset1$ppsqm)
+hist(dataset1$ppsqm,  col='#453F78', xlab='Broj spavaćih soba u nekretnini', ylab='Frekvencija', main = 'Cijena kvadrata nekretnine', border='white')
 ```
 Vidimo da krajevi na Q-Q Plotu odstupaju od očekivane linije, stoga ćemo podatke očistiti od outliera tako da maknemo sve vrijednosti koje su veće od $Q3+ 1.5IQR$, te sve koje su niže od $Q1- 1.5IQR$. Na histogramu također vidimo kako imamo distribuciju zakrivljenu udesno.
 
@@ -56,11 +56,11 @@ upper <- quartiles[2] + 1.5*IQRppsqm
 
 no_outliers = subset(dataset1, dataset1$ppsqm > lower & dataset1$ppsqm < upper)
 
-plot(no_outliers$BedroomAbvGr, no_outliers$ppsqm)
+plot(no_outliers$BedroomAbvGr, no_outliers$ppsqm,  col='#453F78', xlab='Broj spavaćih soba u nekretnini', ylab='Cijena po kvadratu', main = 'Cijena kvadrata nekretnine - bez outliera')
 
-qqnorm(no_outliers$ppsqm)
+qqnorm(no_outliers$ppsqm,  col='#453F78', xlab='Teoretski kvantili', ylab='Cijena po kvadratu', main = 'Cijena kvadrata nekretnine - bez outliera - Q-Q Plot')
 qqline(no_outliers$ppsqm)
-hist(no_outliers$ppsqm)
+hist(no_outliers$ppsqm,  col='#453F78', xlab='Cijena po kvadratu', ylab='Frekvencija', main = 'Cijena kvadrata nekretnine - bez outliera - histogram', border='white')
 ```
 Prema Q-Q plotu dobili smo podatke koji su bolji od podataka prije čišćenja te zadovoljavaju pretpostavku normalnosti cijelog dataseta cijena po kvadratu. Sada i histogramom vizualiziramo distribuciju koja gotovo da ne izgleda zakrivljeno.
 
@@ -81,12 +81,12 @@ Obzirom da stanove 0, 5 i 6 soba imamo malo podataka (između 10 i 100x manje od
 
 data1to4 = subset(no_outliers, no_outliers$BedroomAbvGr > 0 & no_outliers$BedroomAbvGr < 5) 
 
-plot(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
+plot(data1to4$ppsqm ~ data1to4$BedroomAbvGr, col='#453F78', xlab='Broj spavaćih soba u nekretnini', ylab='Cijena po kvadratu', main = 'Cijena kvadrata nekretnine - bez outliera - velike kategorije')
 
-hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 1], breaks = 12)
-hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 2])
-hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
-hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 4], breaks = 20)
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 1], breaks = 12, col='#453F78', xlab='Cijena kvadrata', ylab='Frekvencija', main = 'Cijena kvadrata nekretnine - 1 sobni - histogram', border='white')
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 2],  col='#453F78', xlab='Cijena kvadrata', ylab='Frekvencija', main = 'Cijena kvadrata nekretnine - 2 sobni - histogram', border='white')
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 3],  col='#453F78', xlab='Cijena kvadrata', ylab='Frekvencija', main = 'Cijena kvadrata nekretnine - 3 sobni - histogram', border='white')
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 4], breaks = 20,  col='#453F78', xlab='Cijena kvadrata', ylab='Frekvencija', main = 'Cijena kvadrata nekretnine - 4 sobni - histogram', border='white')
 ```
 ```{r}
 require(nortest)
@@ -120,7 +120,7 @@ lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 4])
 P-value dobiven Lillieforsovim testom za svaku potkategoriju nam sugerira normalnost. Ovaj test smo koristili kao "sanity check", kako bismo vidjeli da nismo donijeli neke zaključke potpuno krivo. ANOVA je relativno robusna metoda na blaga odstupanja od pretpostavki normalnosti i homogenosti varijance, no ipak smo proveli testiranja kako bi smo vidjeli kolika su stvarno ta odstupanja.
 
 ```{r}
-boxplot(ppsqm ~ BedroomAbvGr,data=data1to4)
+boxplot(ppsqm ~ BedroomAbvGr,data=data1to4, col='#453F78', xlab='Broj spavaćih soba u nekretnini', ylab='Cijena po kvadratu', main = 'Cijena kvadrata nekretnine - 1 do 4-sobne nekretnine')
 ```
 
 Grafički nam prikaz sugerira da postoji razlika u sredini cijene po kvadratu između potkategorija nekretnina.
@@ -129,7 +129,6 @@ Sada ćemo provesti test ANOVA-e nad setom podataka.
 
 ```{r}
 aov = aov(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
-
 summary(aov)
 ```
 Obzirom na dobiveni p-value, na razini značajnosti od $\alpha=0.05$ odbacujemo hipotezu $H_0$ u korist alternativne hipoteze $H_1$, dakle odbacujemo hipotezu da su sredine uzoraka jednake.
