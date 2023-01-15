@@ -1,0 +1,188 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+# Drugi zadatak
+
+```{r}
+library(readr)
+```
+
+```{r}
+dataset <- read_csv("preprocessed_data.csv")
+```
+
+2 Ovisi li veličina podruma o kvartu u gradu?
+
+U podacima postoje varijable TotalBsmtSF te Neighborhood. TotalBsmtSF predstavlja veličinu podruma za pojedinu nekretninu u kvatratnim stopama. Neighborhood predstavlja kvart kojoj nekretnina pripada. Nekretnine s veličinom podruma 0 kvadratnih stopa nećemo koristiti u analizi.
+
+Kako bismo odgovorili na ovo istraživačko pitanje, koristit ćemo metodu ANOVA, odnosno analizirat ćemo varijance. ANOVA je metoda kojom testiramo sredine više populacija. U analizi varijance pretpostavlja se da je ukupna varijabilnost u podatcima posljedica varijabilnosti podataka unutar svake pojedine populacije i varijabilnosti između različitih grupa. Varijabilnost unutar pojedinog uzorka je rezultat slučajnosti, a ako postoje razlike u sredinama populacija, one će biti odražene u varijabilnosti među grupama. Analizom varijance htjeli bismo istražutu je li razlika između varijanci slučajna ili nam je statistički značajna.
+
+Budući da u našem pitanju ispitujemo veličinu podruma za različite kvartove, koristit ćemo jedno-faktorski ANOVA model. U jednofaktorskom ANOVA modelu razmatra se utjecaj jednog faktora koji ima k razina.
+
+Neka su:
+$$ \begin{aligned}
+  X_{11}, X_{12}, \ldots, X_{1n_1} & \sim N(\mu_1, \sigma^2) \\
+  X_{21}, X_{22}, \ldots, X_{2n_2} & \sim N(\mu_2, \sigma^2) \\
+  & \vdots\\
+  X_{k1}, X_{k2}, \ldots, X_{kn_k} & \sim N(\mu_k, \sigma^2)
+\end{aligned} $$
+nezavisni uzorci iz $k$ različitih populacija (populacije se razlikuju upravo po razini faktora od interesa). Jednofaktorski ANOVA model glasi:
+$$ X_{ij} = \mu_{i} + \epsilon_{ij}, $$
+gdje je $\mu_{j}$ sredina svake populacije $i = 1,..,k$. Analizom varijance testiramo:
+$$ \begin{aligned}
+  H_0 & : \mu_1 = \mu_2 = \ldots = \mu_k \\
+  H_1 & : \text{barem dvije sredine nisu iste}.
+\end{aligned} $$
+
+Jednofaktorski model možemo zapisati i kao
+$$ X_{ij} = \mu + \alpha_i + \epsilon_{ij}, $$
+gdje je $\mu$ srednja vrijednost svih $\mu_i$
+$$ \mu = \frac{1}{k} \sum_{i=1}^k \mu_i, $$
+a $\alpha_i$ nazivamo efektom $i$-tog tretmana. Ekvivalentna hipoteza je sad 
+$$ \begin{aligned}
+  H_0 & : \alpha_1 = \alpha_2 = \ldots = \alpha_k = 0 \\
+  H_1 & : \text{barem jedna $\alpha_i$ je različita od 0.}
+\end{aligned} $$
+
+Razmatramo sljedeće mjere varijabilnosti u podatcima
+$$ \begin{aligned}
+SST &= \sum_{i=1}^k \sum_{j=1}^n (x_{ij} - \bar{x}_{..})^2 = \text{total sum of squares, ukupna varijabilnost} \\
+SSA &= n \sum_{i=1}^k (\bar{x}_{i.} - \bar{x}_{..})^2 = \text{treatment sum of squares, varijabilnost između grupa} \\
+SSE &= \sum_{i=1}^k \sum_{j=1}^n (x_{ij} - \bar{x}_{i.})^2 = \text{error sum of squares, varijabilnost unutar grupa}
+\end{aligned}$$
+
+Nadalje, Pretpostavke metode ANOVA su: nezavisnost pojedinih podataka u uzorcima, normalna razdioba podataka i homogenost varijanci među populacijama.
+
+Provjera normalnosti može se za svaku pojedinu grupu napraviti Kolmogorov-Smirnov testom ili Lillieforsovom inačicom navedenog testa. U ovom slučaju razmatrat ćemo veličinu kvarta kao nezavisnu varijablu i veličinu kvarta kao zavisnu varijablu.
+
+Kako bi provjerili normalnost podataka za veličinu podruma, prvo moramo pripremiti i počistiti podatke 
+
+```{r priprema podataka za veličinu podruma}
+# Priprema i čišćenje podataka
+basement_area = dataset$TotalBsmtSF
+
+# Grafički prikaz podataka za veličinu podruma
+hist(basement_area, breaks = 20)
+qqnorm(basement_area)
+qqline(basement_area)
+```
+
+Očito je kako podaci nisu normalni pa ćemo maknuti outliere. Najveći problem predstavljaju podrumi iznad 3000 kvadratnih stopa i oni čija je vrijednost 0. 
+
+```{r ciscenje podataka za velicinu podruma}
+# Micanje outliera
+quartiles = quantile(basement_area, probs=c(.25, .75), na.rm=FALSE)
+IQR = IQR(basement_area)
+lower <- quartiles[1] - 1.5*IQR
+upper <- quartiles[2] + 1.5*IQR 
+
+dataset = subset(dataset, basement_area > lower & basement_area < upper)
+basement_area = dataset$TotalBsmtSF
+
+# Grafički prikaz podataka nakon micanja outliera
+hist(basement_area, breaks = 20)
+qqnorm(basement_area)
+qqline(basement_area)
+```
+
+Nadalje, moramo provjeriti ukoliko postoje kvartovi u kojima se nalaze nekretnine koje bi mogle utjecati na daljnju analizu zbog nedovoljne količine podataka
+
+```{r priprema podataka za kvartove}
+neighbourhoods = dataset$Neighborhood
+unique_neighbourhoods <- sort(unique(neighbourhoods))
+
+# Broj kvartova u datasetu
+length(unique_neighbourhoods)
+
+# Prikaz nekretnina po kvartovima
+barplot(table(x= basement_area, y = neighbourhoods))
+
+counts <- table(neighbourhoods)
+counts
+```
+
+Iz daljnje analize maknut ćemo kvartove koji imaju manje od 50 nekretnina kako bi bili sigurniji u normalnost podataka
+
+```{r ciscenje podataka za kvartove}
+# micanje kvartova koji imaju manje od 50 nekretnina
+not_normal_neighbourhoods <- c("Blmngtn", "Blueste", "BrDale", "ClearCr","IDOTRR", "MeadowV","Mitchel", "NoRidge","NPkVill","StoneBr", "SWISU","Timber", "Veenker")
+
+dataset <- subset(dataset, !Neighborhood %in% not_normal_neighbourhoods)
+neighbourhoods = dataset$Neighborhood
+length(unique(neighbourhoods))
+```
+
+Nakon dodatnog čišćenja, preostaje nam 12 kvartove koji su nam važni za nastavak analize. Sada ćemo maknuti outliere u veličini podruma za pojedini kvart.
+
+```{r}
+require(dplyr)
+```
+
+```{r}
+# cistimo outliere za pojedinačan kvart
+dataset <- dataset %>% 
+  group_by(Neighborhood) %>% 
+  mutate(Q1 = quantile(TotalBsmtSF, .25),
+         Q3 = quantile(TotalBsmtSF, .75),
+         IQR = IQR(TotalBsmtSF),
+         lower_bound = Q1 - 1.5*IQR,
+         upper_bound = Q3 + 1.5*IQR) %>%
+  filter(TotalBsmtSF > lower_bound & TotalBsmtSF < upper_bound)
+```
+
+```{r}
+barplot(table(x= dataset$TotalBsmtSF, y = dataset$Neighborhood))
+sort(unique(dataset$Neighborhood))
+```
+
+Nakon čišćenja podataka, možemo provesti Lillieforseov test
+
+```{r test pretpostavki - normalnost}
+require(nortest)
+lillie.test(dataset$TotalBsmtSF)
+
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="BrkSide"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="CollgCr"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Crawfor"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Edwards"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Gilbert"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="NAmes"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="NridgHt"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="NWAmes"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="OldTown"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Sawyer"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="SawyerW"])
+lillie.test(dataset$TotalBsmtSF[dataset$Neighborhood=="Somerst"])
+```
+
+Iz rezultata Lillieforsove inačice Kolmogorov-Smirnov testa vidimo da podaci nisu normalne razdiobe. Ukoliko gledamo normalnost veličine podruma unutar kvarta, možemo vidjeti da su unutar šest kvartova od dvanaest podaci normalno distribuirani.
+
+Što se tiče homogenosti varijanci različitih populacija, potrebno je testirati:
+$$ \begin{aligned}
+  H_0 & : \sigma_1^2 = \sigma_2^2 = \ldots = \sigma_k^2 \\
+  H_1 & : \text{barem dvije varijance nisu iste}.
+\end{aligned} $$
+
+```{r test pretpostavki - homogenost varijanci}
+# Testiranje homogenosti varijance uzoraka Bartlettovim testom
+bartlett.test(dataset$TotalBsmtSF ~ dataset$Neighborhood)
+```
+
+Bartlettovim testom nezavisnosti dobili smo p-vrijednost iznimno malu što nam sugerira da postoje barem dva kvarta koja imaju različitu varijancu za veličinu podruma. U to se možemo uvjeriti i grafički.
+
+```{r test razlike u veličini podruma}
+
+# Graficki prikaz podataka
+boxplot(dataset$TotalBsmtSF ~ dataset$Neighborhood)
+
+# Test
+a = aov(dataset$TotalBsmtSF ~ dataset$Neighborhood)
+summary(a)
+
+```
+
+Grafički prikaz sugerira da postoji jasna razlika u veličinama podruma za pojedinačni kvart, što potvrđuje i ANOVA.
+
+Budući da je p-vrijednost približna nuli, odbacujemo nultu hipotezu u korist alternative, odnosno sa sigurnošću zaključujemo da veličina podruma ovisi o kvartu.
