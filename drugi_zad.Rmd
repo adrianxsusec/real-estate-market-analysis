@@ -62,7 +62,7 @@ Kako bi provjerili normalnost podataka za veličinu podruma, prvo moramo priprem
 
 ```{r priprema podataka za velicinu podruma}
 # Graficki prikaz podataka za velicinu podruma
-hist(dataset$TotalBsmtSF, breaks = 40, main="Veličine podruma nekretnina",xlab="Veličina podruma",
+hist(dataset$TotalBsmtSF, breaks = 40, main="Velicine podruma nekretnina",xlab="Velicina podruma",
      ylab="Frekvencije", col="#69b3a2", border="white")
 qqnorm(dataset$TotalBsmtSF, col="#69b3a2")
 qqline(dataset$TotalBsmtSF)
@@ -81,7 +81,7 @@ upper <- quartiles[2] + 1.5*IQR
 dataset_pit2 = subset(dataset, dataset$TotalBsmtSF > lower & dataset$TotalBsmtSF < upper)
 
 # Graficki prikaz podataka nakon micanja outliera
-hist(dataset_pit2$TotalBsmtSF, breaks = 20, main="Veličine podruma nekretnina",xlab="Veličina podruma",
+hist(dataset_pit2$TotalBsmtSF, breaks = 20, main="Velicine podruma nekretnina",xlab="Velicina podruma",
      ylab="Frekvencije", col="#69b3a2", border="white")
 qqnorm(dataset_pit2$TotalBsmtSF, col="#69b3a2")
 qqline(dataset_pit2$TotalBsmtSF)
@@ -177,7 +177,7 @@ Bartlettovim testom nezavisnosti dobili smo iznimno malu p-vrijednost što nam s
 
 # Graficki prikaz podataka
 par(mar=c(5.1, 5.1, 4.1, 2.1), mgp=c(4,1,0))
-boxplot(dataset_pit2$TotalBsmtSF ~ dataset_pit2$Neighborhood, col="#69b3a2", xlab = "Kvartovi", ylab="Površina podruma", las=3)
+boxplot(dataset_pit2$TotalBsmtSF ~ dataset_pit2$Neighborhood, col="#69b3a2", xlab = "Kvartovi", ylab="Povrsina podruma", las=3)
         
 # Test
 a = aov(dataset_pit2$TotalBsmtSF ~ dataset_pit2$Neighborhood)
