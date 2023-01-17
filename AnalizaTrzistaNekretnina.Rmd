@@ -1,44 +1,623 @@
 ---
 title: "SAP - Analiza tržišta nekretnina"
-subtitle: "Case study Real estate market analysis"
-author: "Adrian Sušec, Josip Goluža, Edi Prodan, Zvonimir Žunić"
-date: "28.11.2022."
-output: pdf_document
+author: "Adrian Sušec, Zvonimir Žunić, Edi Prodan, Josip Goluža"
+date: "15.1.2023."
+output:
+  pdf_document: default
+  word_document: default
 ---
 
-# Necesarry libraries
+# Uvod i motivacija
 
-```{r}
-library(readr)
-library(dplyr)
-```
+U ovom projektu koristit ćemo skup podataka o prodanim nekretninama u gradu Ames u SAD-u. Podaci su opisani sa 79 značajki i ukupno ih je 1460. Cilj projekta je analizirati ove podatke i odgovoriti na istraživačka pitanja koja se tiču oblika zemljišne čestice, veličine podruma, broja spavaćih soba, cijene kvadrata nekretnine i mogućnosti predviđanja cijene nekretnine.
 
 # Loading dataset
 
 ```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
 dataset <- read_csv("preprocessed_data.csv")
 ```
 
+# Pitanje 1. "Određuje li oblik zemljišne čestice broj katova kuće?"
 
-#Plotting lot shape frequencies
+Postavljamo hipoteze:
 
+$H_0$: broj katova kuće ne ovisi o obliku zemljišne čestice
+$H_1$: broj katova kuće ovisi o obliku zemljišne čestice
+
+Učitavamo dataset u varijablu df sa kojom ćemo dalje raditi.
 ```{r}
-
-dataset %>% 
-  group_by(LotShape) %>%
-  tally()-> lotshapefreq
-lotshapefreq
-
-barplot(lotshapefreq$n, names.arg = lotshapefreq$LotShape, main="Lot shape frequency", xlab="Lot shape type", col="Green")
-
-# radi istu stvar
-barplot(table(dataset$LotShape))
-
-```
-
-```{r}
-names(dataset)
-dataset$HouseStyle
+df <- dataset
 ```
 
 
+Grupiramo vrijednosti podataka u stupcu. Stambene objekte koji imaju 1.5 kat tretiramo kao da imaju 1 kat, a objekte koji imaju 2.5 kata tretiramo kao da imaju 2 kata. 
+```{r}
+df$HouseStyle <- gsub("1.5Fin", "1Story", df$HouseStyle)
+df$HouseStyle <- gsub("1.5Unf", "1Story", df$HouseStyle)
+df$HouseStyle <- gsub("2.5Fin", "2Story", df$HouseStyle)
+df$HouseStyle <- gsub("2.5Unf", "2Story", df$HouseStyle)
+df$HouseStyle <- gsub("SFoyer", "2Story", df$HouseStyle)
+df$HouseStyle <- gsub("SLvl", "2Story", df$HouseStyle)
+df$LotShape <- gsub("IR3", "IR2", df$LotShape)
+```
+
+
+
+```{r}
+ggplot(df, aes(x = LotShape, fill = HouseStyle)) +
+  geom_bar(position = "dodge")
+```
+
+Napravit ćemo kontingencijsku tablicu i dodati joj marginalne vrijednosti.
+```{r}
+table <- table(df$LotShape, df$HouseStyle)
+margins_tbl = addmargins(table)
+print(margins_tbl)
+```
+
+`chisq.test()` se može izvršiti samo ako očekivana frekvencija pojedinog razreda iznosi najmanje 5. Pretpostavka testa je da je ovo uvjet zadovoljen, stoga se prije provođenja testa mora provjeriti da li je očekivana frekvencija pojedinog razreda veća ili jednaka 5.
+```{r}
+for (col_names in colnames(margins_tbl)){
+  for (row_names in rownames(margins_tbl)){
+    if (!(row_names == 'Sum' | col_names == 'Sum') ){
+      cat('Očekivane frekvencije za ',col_names,'-',row_names,': '
+          ,(margins_tbl[row_names,'Sum'] 
+            * margins_tbl['Sum',col_names]) / margins_tbl['Sum','Sum'],'\n')
+    }
+  }
+}
+```
+
+
+Sve očekivane frekvencije su veće od 5. Možemo nastaviti sa`chisq.test()` testom.
+Prethodno spomenute hipoteze testiramo testom nezavisnoti pomoću chi testa.
+```{r}
+test = chisq.test(df$LotShape, df$HouseStyle, simulate.p.value = TRUE, B = 1000)
+test
+```
+$p < 0.05$
+
+## Zaključak 
+
+Na temelju p vrijednosti odbacujemo hipotezu "$H_0$:broj katova kuće ne ovisi o obliku zemljišne čestice". Prihvaćamo alternativnu hipotezu "$H_1$: broj katova kuće ovisi o obliku zemljišne čestice" i zaključujemo da broj katova kuće ovisi o obliku zemljišne čestice.
+
+
+
+# Pitanje 2. "Ovisi li veličina podruma o kvartu u gradu?"
+
+U podacima postoje varijable TotalBsmtSF te Neighborhood. TotalBsmtSF predstavlja veličinu podruma za pojedinu nekretninu u kvadratnim stopama. Neighborhood predstavlja kvart kojoj nekretnina pripada. Nekretnine s veličinom podruma 0 kvadratnih stopa nećemo koristiti u analizi.
+
+Kako bismo odgovorili na ovo istraživačko pitanje, koristit ćemo metodu ANOVA, odnosno analizirat ćemo varijance. ANOVA je metoda kojom testiramo sredine više populacija. U analizi varijance pretpostavlja se da je ukupna varijabilnost u podatcima posljedica varijabilnosti podataka unutar svake pojedine populacije i varijabilnosti između različitih grupa. Varijabilnost unutar pojedinog uzorka je rezultat slučajnosti, a ako postoje razlike u sredinama populacija, one će biti odražene u varijabilnosti među grupama. Analizom varijance htjeli bismo istražiti je li razlika između varijanci slučajna ili nam je statistički značajna.
+
+Budući da u našem pitanju ispitujemo veličinu podruma za različite kvartove, koristit ćemo jedno-faktorski ANOVA model. U jednofaktorskom ANOVA modelu razmatra se utjecaj jednog faktora koji ima k razina.
+
+Neka su:
+$$ \begin{aligned}
+  X_{11}, X_{12}, \ldots, X_{1n_1} & \sim N(\mu_1, \sigma^2) \\
+  X_{21}, X_{22}, \ldots, X_{2n_2} & \sim N(\mu_2, \sigma^2) \\
+  & \vdots\\
+  X_{k1}, X_{k2}, \ldots, X_{kn_k} & \sim N(\mu_k, \sigma^2)
+\end{aligned} $$
+nezavisni uzorci iz $k$ različitih populacija (populacije se razlikuju upravo po razini faktora od interesa). Jednofaktorski ANOVA model glasi:
+$$ X_{ij} = \mu_{i} + \epsilon_{ij}, $$
+gdje je $\mu_{j}$ sredina svake populacije $i = 1,..,k$. Analizom varijance testiramo:
+$$ \begin{aligned}
+  H_0 & : \mu_1 = \mu_2 = \ldots = \mu_k \\
+  H_1 & : \text{barem dvije sredine nisu iste}.
+\end{aligned} $$
+
+Jednofaktorski model možemo zapisati i kao
+$$ X_{ij} = \mu + \alpha_i + \epsilon_{ij}, $$
+gdje je $\mu$ srednja vrijednost svih $\mu_i$
+$$ \mu = \frac{1}{k} \sum_{i=1}^k \mu_i, $$
+a $\alpha_i$ nazivamo efektom $i$-tog tretmana. Ekvivalentna hipoteza je sad 
+$$ \begin{aligned}
+  H_0 & : \alpha_1 = \alpha_2 = \ldots = \alpha_k = 0 \\
+  H_1 & : \text{barem jedna $\alpha_i$ je različita od 0.}
+\end{aligned} $$
+
+Razmatramo sljedeće mjere varijabilnosti u podatcima
+$$ \begin{aligned}
+SST &= \sum_{i=1}^k \sum_{j=1}^n (x_{ij} - \bar{x}_{..})^2 = \text{total sum of squares, ukupna varijabilnost} \\
+SSA &= n \sum_{i=1}^k (\bar{x}_{i.} - \bar{x}_{..})^2 = \text{treatment sum of squares, varijabilnost između grupa} \\
+SSE &= \sum_{i=1}^k \sum_{j=1}^n (x_{ij} - \bar{x}_{i.})^2 = \text{error sum of squares, varijabilnost unutar grupa}
+\end{aligned}$$
+
+Nadalje, pretpostavke metode ANOVA su: nezavisnost pojedinih podataka u uzorcima, normalna razdioba podataka i homogenost varijanci među populacijama.
+
+Provjera normalnosti može se za svaku pojedinu grupu napraviti Kolmogorov-Smirnov testom ili Lillieforsovom inačicom navedenog testa. U ovom slučaju razmatrat ćemo veličinu kvarta kao nezavisnu varijablu i veličinu kvarta kao zavisnu varijablu.
+
+Kako bi provjerili normalnost podataka za veličinu podruma, prvo moramo pripremiti i počistiti podatke. 
+
+```{r priprema podataka za velicinu podruma}
+dataset_pit2 <- dataset
+# Graficki prikaz podataka za velicinu podruma
+hist(dataset_pit2$TotalBsmtSF, breaks = 40, main="Velicine podruma nekretnina"
+     ,xlab="Velicina podruma", ylab="Frekvencije", col="#69b3a2", border="white")
+qqnorm(dataset_pit2$TotalBsmtSF, col="#69b3a2")
+qqline(dataset_pit2$TotalBsmtSF)
+```
+
+Očito je kako podaci nisu normalni pa ćemo maknuti outliere. Najveći problem predstavljaju podrumi iznad 3000 kvadratnih stopa i oni čija je vrijednost 0. 
+
+```{r ciscenje podataka za velicinu podruma}
+# Micanje outliera
+quartiles = quantile(dataset_pit2$TotalBsmtSF, probs=c(.25, .75), na.rm=FALSE)
+IQR = IQR(dataset_pit2$TotalBsmtSF)
+lower <- quartiles[1] - 1.5*IQR
+upper <- quartiles[2] + 1.5*IQR 
+dataset_pit2 = subset(
+  dataset_pit2, dataset_pit2$TotalBsmtSF > lower & dataset_pit2$TotalBsmtSF < upper)
+# Graficki prikaz podataka nakon micanja outliera
+hist(dataset_pit2$TotalBsmtSF, breaks = 20, main="Velicine podruma nekretnina"
+     ,xlab="Velicina podruma", ylab="Frekvencije", col="#69b3a2", border="white")
+qqnorm(dataset_pit2$TotalBsmtSF, col="#69b3a2")
+qqline(dataset_pit2$TotalBsmtSF)
+```
+
+Podaci za veličinu podruma sada izgledaju normalnije. Osim veličine podruma, moramo provjeriti postoje li kvartovi u kojima se nalaze nekretnine koje bi mogle utjecati na daljnju analizu zbog nedovoljne količine podataka.
+
+```{r priprema podataka za kvartove}
+unique_neighbourhoods <- sort(unique(dataset_pit2$Neighborhood))
+# Broj kvartova u datasetu
+length(unique_neighbourhoods)
+# Prikaz nekretnina po kvartovima
+dataset_pit2 %>%
+  group_by(Neighborhood) %>%
+  count() -> grouped_neighborhoods
+barplot(grouped_neighborhoods$n, names.arg=grouped_neighborhoods$Neighborhood, 
+        col="#69b3a2", border = "white", las=3)
+table(dataset_pit2$Neighborhood)
+```
+
+Grafičkim i tabličnim prikazom smo dobili broj nekretnina po kvartu. Iz daljnje analize maknut ćemo kvartove koji imaju manje od 50 nekretnina kako bi bili sigurniji u vjerodostojnosti podataka.
+
+```{r ciscenje kvartova}
+# micanje kvartova koji imaju manje od 50 nekretnina
+not_normal_neighbourhoods <- c("Blmngtn", "Blueste", "BrDale", "ClearCr","IDOTRR", 
+                               "MeadowV","Mitchel", "NoRidge","NPkVill","StoneBr", 
+                               "SWISU","Timber", "Veenker")
+dataset_pit2 <- subset(dataset_pit2, !Neighborhood %in% not_normal_neighbourhoods)
+length(unique(dataset_pit2$Neighborhood))
+```
+
+Nakon dodatnog čišćenja, preostaje nam 12 kvartova koji su nam važni za nastavak analize. Sada ćemo maknuti outliere za pojedini kvart.
+
+```{r ciscenje podataka za kvartove}
+dataset_pit2 <- dataset_pit2 %>% 
+  group_by(Neighborhood) %>% 
+  mutate(Q1 = quantile(TotalBsmtSF, .25),
+         Q3 = quantile(TotalBsmtSF, .75),
+         IQR = IQR(TotalBsmtSF),
+         lower_bound = Q1 - 1.5*IQR,
+         upper_bound = Q3 + 1.5*IQR) %>%
+  filter(TotalBsmtSF > lower_bound & TotalBsmtSF < upper_bound)
+```
+
+```{r graficki prikaz preostalih kvartova}
+dataset_pit2 %>%
+  group_by(Neighborhood) %>%
+  count() -> grouped_neighborhoods
+barplot(grouped_neighborhoods$n, names.arg=grouped_neighborhoods$Neighborhood, col="#69b3a2", border = "white", las=3)
+```
+
+Možemo vidjeti kako sada više nema kvartova s manje od 50 nekretnina. 
+
+Nakon čišćenja svih podataka, provest ćemo Lillieforseov test za sve veličine podruma i veličine podruma po kvartovima.
+
+```{r test pretpostavki - normalnost}
+require(nortest)
+lillie.test(dataset_pit2$TotalBsmtSF)
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="BrkSide"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="CollgCr"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Crawfor"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Edwards"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Gilbert"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="NAmes"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="NridgHt"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="NWAmes"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="OldTown"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Sawyer"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="SawyerW"])
+lillie.test(dataset_pit2$TotalBsmtSF[dataset_pit2$Neighborhood=="Somerst"])
+```
+
+Iz rezultata Lillieforsove inačice Kolmogorov-Smirnov testa vidimo da podaci nisu normalne razdiobe jer je p-vrijednost približna 0. Ako gledamo normalnost veličine podruma unutar kvarta, vidimo da su unutar šest kvartova podaci ipak normalno distribuirani.
+
+Što se tiče homogenosti varijanci različitih populacija, potrebno je testirati:
+$$ \begin{aligned}
+  H_0 & : \sigma_1^2 = \sigma_2^2 = \ldots = \sigma_k^2 \\
+  H_1 & : \text{barem dvije varijance nisu iste}.
+\end{aligned} $$
+
+```{r test pretpostavki - homogenost varijanci}
+# Testiranje homogenosti varijance uzoraka Bartlettovim testom
+bartlett.test(dataset_pit2$TotalBsmtSF ~ dataset_pit2$Neighborhood)
+```
+
+Bartlettovim testom nezavisnosti dobili smo iznimno malu p-vrijednost što nam sugerira da postoje barem dva kvarta koja imaju različitu varijancu za veličinu podruma. U to se možemo uvjeriti i grafički.
+
+```{r test razlike u velicini podruma}
+# Graficki prikaz podataka
+par(mar=c(5.1, 5.1, 4.1, 2.1), mgp=c(4,1,0))
+boxplot(dataset_pit2$TotalBsmtSF ~ dataset_pit2$Neighborhood, col="#69b3a2", 
+        xlab = "Kvartovi", ylab="Povrsina podruma", las=3)
+        
+# Test
+a = aov(dataset_pit2$TotalBsmtSF ~ dataset_pit2$Neighborhood)
+summary(a)
+```
+
+## Zaključak
+
+Grafički prikaz sugerira da postoji jasna razlika u veličinama podruma za pojedinačni kvart, što potvrđuje i ANOVA.
+
+Budući da je p-vrijednost približna nuli, odbacujemo nultu hipotezu u korist alternative, odnosno sa sigurnošću zaključujemo da veličina podruma ovisi o kvartu.
+
+
+# Pitanje 3. "Uvjetuje li broj spavaćih soba cijenu kvadrata nekretnine?"
+
+Naš dataset ne sadržava cijenu po kvadratu, tj. kvadratnoj stopi ($ft^2$) za nekretninu, tako da ćemo tu vrijednost izračunati dijeljenjem cijene po kojoj je prodana sa stupcem GrLivArea, što je kvadratura područja za stanare.
+
+Za testiranje postavljamo hipoteze $H_0$ i alternativu $H_1$. Razmatramo utjecaj broja spavaćih soba u nekretnini na cijenu kvadrata nekretnine.
+
+Analizom varijance testiramo:
+$$ \begin{aligned}
+  H_0 & : \mu_1 = \mu_2 = \ldots = \mu_k \\
+  H_1 & : \text{barem dvije sredine cijena po kvadratu nisu iste}.
+\end{aligned} $$
+
+Kako bismo dobili dojam o cijelom datasetu potrebnih podataka, plotat ćemo cijenu kvadrata ovisno o broju spavaćih soba u nekretnini.
+
+```{r}
+dataset_pit3 <- dataset
+dataset_pit3$ppsqm = dataset_pit3$SalePrice / dataset_pit3$GrLivArea
+plot(dataset_pit3$BedroomAbvGr, dataset_pit3$ppsqm, col='#453F78',
+     xlab='Broj spavacih soba u nekretnini', ylab='Cijena po kvadratu', 
+     main = 'Cijena kvadrata nekretnine')
+```
+
+Ovdje možemo vidjeti distribuciju obzirom na cijenu kvadrata po broju spavaćih soba. Za provođenje testiranja mičemo stan sa 8 soba obzirom da imamo jednu vrijednost, što nam statistički ne pridonosi previše obzirom na malu veličinu uzorka.
+
+Nakon toga napravit ćemo boxplot kako bismo dobili dojam o sredimama podkategorija po broju spavačih soba, te Q-Q Plot kako bismo procijenili normalnost cjelokupnog dataseta.
+
+```{r}
+dataset1 = subset(dataset_pit3, BedroomAbvGr != 8)
+plot(dataset1$BedroomAbvGr,dataset1$ppsqm,col='#453F78',
+     xlab='Broj spavacih soba u nekretnini', ylab='Cijena po kvadratu',
+     main = 'Cijena kvadrata nekretnine')
+boxplot(dataset1$ppsqm ~ dataset1$BedroomAbvGr, col='#453F78',
+        xlab='Broj spavacih soba u nekretnini', ylab='Cijena po kvadratu', 
+        main = 'Cijena kvadrata nekretnine')
+qqnorm(dataset1$ppsqm, col='#453F78', ylab='Cijena po kvadratu',
+       xlab='Teoretski kvantili', main = 'Cijena kvadrata nekretnine -- Q-Q Plot')
+qqline(dataset1$ppsqm)
+hist(dataset1$ppsqm,  col='#453F78', xlab='Broj spavacih soba u nekretnini', 
+     ylab='Frekvencija', main = 'Cijena kvadrata nekretnine', border='white')
+```
+Vidimo da krajevi na Q-Q Plotu odstupaju od očekivane linije, stoga ćemo podatke očistiti od outliera tako da maknemo sve vrijednosti koje su veće od $Q3+ 1.5IQR$, te sve koje su niže od $Q1- 1.5IQR$. Na histogramu također vidimo kako imamo distribuciju zakrivljenu udesno.
+
+```{r}
+quartiles = quantile(dataset1$ppsqm, probs = c(.25, .75), na.rm=FALSE)
+IQRppsqm = IQR(dataset1$ppsqm)
+lower <- quartiles[1] - 1.5*IQRppsqm
+upper <- quartiles[2] + 1.5*IQRppsqm
+no_outliers = subset(dataset1, dataset1$ppsqm > lower & dataset1$ppsqm < upper)
+plot(no_outliers$BedroomAbvGr, no_outliers$ppsqm,  col='#453F78', 
+     xlab='Broj spavacih soba u nekretnini', ylab='Cijena po kvadratu', 
+     main = 'Cijena kvadrata nekretnine - bez outliera')
+qqnorm(no_outliers$ppsqm,  col='#453F78', xlab='Teoretski kvantili', 
+       ylab='Cijena po kvadratu', 
+       main = 'Cijena kvadrata nekretnine - bez outliera - Q-Q Plot')
+qqline(no_outliers$ppsqm)
+hist(no_outliers$ppsqm,  col='#453F78', xlab='Cijena po kvadratu',
+     ylab='Frekvencija', 
+     main = 'Cijena kvadrata nekretnine - bez outliera - histogram', border='white')
+```
+Prema Q-Q plotu dobili smo podatke koji su bolji od podataka prije čišćenja te zadovoljavaju pretpostavku normalnosti cijelog dataseta cijena po kvadratu. Sada i histogramom vizualiziramo distribuciju koja gotovo da ne izgleda zakrivljeno.
+
+```{r}
+dataset2 <- dataset1[names(dataset1) %in% c('ppsqm', 'BedroomAbvGr')]
+no_outliers %>%
+  group_by(BedroomAbvGr) %>%
+  count() -> dataset3
+dataset3
+```
+
+Obzirom da stanove 0, 5 i 6 soba imamo malo podataka (između 10 i 100x manje od potkategorija s najvećim brojem podataka), njih nećemo uzeti u obzir za statističko testiranje, čime završavamo s podacima koji izgledaju ovako:
+
+```{r}
+data1to4 = subset(no_outliers, no_outliers$BedroomAbvGr > 0 & no_outliers$BedroomAbvGr < 5) 
+plot(data1to4$ppsqm ~ data1to4$BedroomAbvGr, col='#453F78', 
+     xlab='Broj spavacih soba u nekretnini', ylab='Cijena po kvadratu', 
+     main = 'Cijena kvadrata nekretnine - bez outliera - velike kategorije')
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 1], breaks = 12, col='#453F78',
+     xlab='Cijena kvadrata', ylab='Frekvencija', 
+     main = 'Cijena kvadrata nekretnine - 1 sobni - histogram', border='white')
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 2],  col='#453F78',
+     xlab='Cijena kvadrata', ylab='Frekvencija',
+     main = 'Cijena kvadrata nekretnine - 2 sobni - histogram', border='white')
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 3],  col='#453F78',
+     xlab='Cijena kvadrata', ylab='Frekvencija',
+     main = 'Cijena kvadrata nekretnine - 3 sobni - histogram', border='white')
+hist(data1to4$ppsqm[data1to4$BedroomAbvGr == 4], breaks = 20,  
+     col='#453F78', xlab='Cijena kvadrata', ylab='Frekvencija',
+     main = 'Cijena kvadrata nekretnine - 4 sobni - histogram', border='white')
+```
+```{r}
+require(nortest)
+# Testiranje homogenosti varijance uzoraka Bartlettovim testom
+bartlett.test(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
+# Varijance 
+var_1room = var(data1to4$ppsqm[data1to4$BedroomAbvGr == 1])
+var_2room = var(data1to4$ppsqm[data1to4$BedroomAbvGr == 2])
+var_3room = var(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
+var_4room = var(data1to4$ppsqm[data1to4$BedroomAbvGr == 4])
+cat("Varijanca cijene po kvadratu stanova s 1 spavaćom sobom: ", 
+    var_1room, "\n")
+cat("Varijanca cijene po kvadratu stanova s 2 spavaćom sobom: ", 
+    var_2room, "\n")
+cat("Varijanca cijene po kvadratu stanova s 3 spavaćom sobom: ", 
+    var_3room, "\n")
+cat("Varijanca cijene po kvadratu stanova s 4 spavaćom sobom: ", 
+    var_4room, "\n")
+```
+
+Iako nam Bartlettov test sugerira da varijance između poduzoraka soba sa 1 do 4 spavaćih soba nisu homogene, vidimo da su istog reda veličine, stoga nastavljamo sa testiranjem podataka.
+
+```{r}
+lillie.test(data1to4$ppsqm)
+lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 1])
+lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 2])
+lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 3])
+lillie.test(data1to4$ppsqm[data1to4$BedroomAbvGr == 4])
+```
+
+
+P-value dobiven Lillieforsovim testom za svaku potkategoriju nam sugerira normalnost. Ovaj test smo koristili kao "sanity check", kako bismo vidjeli da nismo donijeli neke zaključke potpuno krivo. ANOVA je relativno robusna metoda na blaga odstupanja od pretpostavki normalnosti i homogenosti varijance, no ipak smo proveli testiranja kako bi smo vidjeli kolika su stvarno ta odstupanja.
+
+```{r}
+boxplot(ppsqm ~ BedroomAbvGr,data=data1to4, col='#453F78', 
+        xlab='Broj spavacih soba u nekretnini', ylab='Cijena po kvadratu',
+        main = 'Cijena kvadrata nekretnine - 1 do 4-sobne nekretnine')
+```
+
+Grafički nam prikaz sugerira da postoji razlika u sredini cijene po kvadratu između potkategorija nekretnina.
+
+Sada ćemo provesti test ANOVA-e nad setom podataka.
+
+```{r}
+aov = aov(data1to4$ppsqm ~ data1to4$BedroomAbvGr)
+summary(aov)
+```
+Obzirom na dobiveni p-value, na razini značajnosti od $\alpha=0.05$ odbacujemo hipotezu $H_0$ u korist alternativne hipoteze $H_1$, dakle odbacujemo hipotezu da su sredine uzoraka jednake.
+
+Sada želimo procijeniti model koji bi nam pomoću varijable o broju spavaćih soba u nekretnini objasnio cijenu kvadrata iste te nekretnine.
+
+```{r}
+model = lm(ppsqm ~ BedroomAbvGr, data = data1to4)
+summary(model)
+anova(model)
+```
+
+Za model linearne regresije koji kao prediktor koristi samo broj spavaćih soba, daje nam isti statistički zaključak kao i metoda provedena prije - dakle, u ovom je slučaju istovjetan ANOVA-i.
+
+## Zaključak
+
+Na temelju provedenih statističkih testiranja (ANOVA i lin. reg) te dobivenih p-vrijednosti, zaključujemo da cijena kvadrata nekretnine ovisi o broju spavaćih soba u nekretnini
+
+
+# Pitanje 4. "Mogu li dostupne značajke predvidjeti cijenu nekretnine?"
+
+Za ispitivanje predviđanja cijene nekretnine koristiti ćemo višestruku regresiju gdje će cijena nekretnince(SalePrice) biti zavisna varijabla. 
+
+Za dobru procjenu cjene nekretnine potrebno nam je više nezavisnih varijabli. Zbog toga ćemo koristiti metodu višestruke regresije. 
+Višestruka regresija koristi za modeliranje zavisnosti između jedne zavisne varijable i više nezavisnih varijabli. 
+
+Procjenjeni odgovor se dobiva iz jednadžbe regresije uzorka $$ \widehat{y} =b_{0}+b_{1}x_{1}+...+b_{k} x_{k} + e_{i}$$
+
+Cilj je pronaći matematički model koji najbolje opisuje zavisnost cijene i ostalih varijabli koji bi mogli utjecati na nju.
+
+Kod traženja koje bi sve varijable mogle najviše utjecati na cijenu izabrali smo:
+  -> kvadratura stambenog prostora iznad tla(GrLivArea)
+  
+  -> kvaliteta nekretnine (OverallQual)
+  
+  -> kvart (Neighborhood)
+
+
+Provjera korelacije
+
+Prije procjene modela moramo provjeriti korelaciju koeficijenata parova nezavisnih varijabli da nisu previše korelirani. Svaka nezavisna varijabla nebi trebala zavisiti niti o jednoj drugoj. To moramo provjeriti jer prevelika koreliranost može uzrokovati probleme u interpretaciji rezultata.
+
+```{r cor}
+dataset4 <- dataset
+neighborhood_factor <- factor(dataset4$Neighborhood)
+neigh_num <- as.numeric(neighborhood_factor)
+
+cor(cbind(dataset4$OverallQual, dataset4$GrLivArea, neigh_num)) 
+```
+
+Iako su sveukupna kvaliteta i kvadratura donekle korelirane, obje ćemo uzeti u razmatranje za daljnju statističku analizu jer nemaju povezane efekte na konačnu cijenu nekretnine. Kvadratura nekretnine ne bi trebala utjecati na kvalitetu kuće i obrnuto.
+
+Prije izvođenja trebamo provjeriti normalnost varijabli.
+
+```{r provjera podataka}
+hist(dataset4$GrLivArea, main="Kvadratura nekretnina",xlab="Kvadratura",
+     ylab="Frekvencije", col="#FFBF00", border="white")
+hist(dataset4$SalePrice, main="Cijena nekretnina",xlab="Cijena",
+     ylab="Frekvencije", col="#FFBF00", border="white")
+```
+
+Iz priloženih histograma možemo vidjeti da distribucija cijene i kvadrature nekretnine nisu normalno distribuirane.
+
+```{r transofrmacija distribucije kvadrature}
+dataset4 <- dataset4 %>%
+  group_by(GrLivArea) %>%
+  filter(GrLivArea < 3000 & GrLivArea > 600)
+dataset4$GrLivArea <- as.numeric(
+  cut(dataset4$GrLivArea,
+      breaks= c(600, 1000, 1500, 2000, 3000),
+      labels = c(1,2, 3, 4)))
+
+boxplot(SalePrice ~ GrLivArea, data = dataset4, xlab="Kvadratura po grupama",
+     ylab="Cijena", col="#FFBF00")
+boxplot(SalePrice ~ OverallQual, data = dataset4, xlab="Kvaliteta",
+     ylab="Cijena", col="#FFBF00")
+boxplot(SalePrice ~ Neighborhood, data = dataset4, xlab="Kvart",
+     ylab="Cijena", col="#FFBF00")
+```
+
+Micanjem nekretnina sa kvadraturom koja se jako rijetko pojavljuje (više od 3000 i manje od 600) i grupiranjem u 4 kategorije:
+  -> 1 - između 600 i 1000
+  -> 2 - između 1000 i 1500
+  -> 3 - između 1500 i 2000
+  -> 4 - između 2000 i 3000
+dobili smo 4 kategorije nekretnina po kvadraturi u kojima se može naslutiti ovisnost cijene o kvardaturi nekretnine.
+
+
+```{r transformacija distribucije cijene nekretnine}
+dataset4$SalePrice <- log(dataset4$SalePrice)
+
+hist(dataset4$SalePrice, main="Cijena nekretnina",xlab="Cijena",
+     ylab="Frekvencije", col="#FFBF00", border="white")
+```
+
+Logaritmiranjem cijene nekretnine dobili smo distribuciju koja puno više podsjeća na normalnu distribuciju
+
+
+```{r micanje kvartova}
+not_normal_neighbourhoods <- c(
+  "Blmngtn", "Blueste", "BrDale", "ClearCr", "IDOTRR" ,"NoRidge",
+  "MeadowV","NPkVill","StoneBr", "SWISU", "Timber", "Veenker")
+dataset4 <- subset(dataset4, !Neighborhood %in% not_normal_neighbourhoods)
+```
+
+Maknuli smo kvartove sa jako malim brojem podataka (ispod 40). Time smo poboljšali pouzdanost modela.
+
+```{r micanje stršećih vrijednosti}
+dataset4 <- dataset4 %>%
+  group_by(Neighborhood) %>%
+  mutate(Q1 = quantile(SalePrice, .25),
+         Q3 = quantile(SalePrice, .75),
+         IQR = IQR(SalePrice),
+         lower_bound = Q1 - 1.5*IQR,
+         upper_bound = Q3 + 1.5*IQR) %>%
+  filter(SalePrice > lower_bound & SalePrice < upper_bound)
+
+dataset4 <- dataset4 %>%
+  group_by(OverallQual) %>%
+  mutate(Q1 = quantile(SalePrice, .25),
+         Q3 = quantile(SalePrice, .75),
+         IQR = IQR(SalePrice),
+         lower_bound = Q1 - 1.5*IQR,
+         upper_bound = Q3 + 1.5*IQR) %>%
+  filter(SalePrice > lower_bound & SalePrice < upper_bound)
+
+dataset4 <- dataset4 %>%
+  group_by(Neighborhood) %>%
+  mutate(Q1 = quantile(SalePrice, .25),
+         Q3 = quantile(SalePrice, .75),
+         IQR = IQR(SalePrice),
+         lower_bound = Q1 - 1.5*IQR,
+         upper_bound = Q3 + 1.5*IQR) %>%
+  filter(SalePrice > lower_bound & SalePrice < upper_bound)
+```
+
+Micanjem stršećih vrijednosti povećavam sigurnost u svoj model i smanjujem utjecaj vrijednsti koje dosta odstupaju od sredine.
+
+```{r provjera reziduala modela}
+fit.GrLivArea = lm(SalePrice ~ GrLivArea , data=dataset4)
+fit.Neighborhood = lm(SalePrice ~ Neighborhood , data=dataset4)
+fit.OverallQual = lm(SalePrice ~ OverallQual, data= dataset4)
+
+
+selected.model2 = fit.GrLivArea
+qqnorm(rstandard(selected.model2),  col='#FFBF00', 
+       xlab='Teoretski kvantili', ylab='Kvadratura')
+qqline(rstandard(selected.model2),  col='#000000')
+
+selected.model4 = fit.Neighborhood
+qqnorm(rstandard(selected.model4),  col='#FFBF00', 
+       xlab='Teoretski kvantili', ylab='Kvartovi')
+qqline(rstandard(selected.model4),  col='#000000')
+# 
+selected.model5 = fit.OverallQual
+qqnorm(rstandard(selected.model5),  col='#FFBF00', 
+       xlab='Teoretski kvantili', ylab='Kvaliteta')
+qqline(rstandard(selected.model5),  col='#000000')
+
+```
+
+Iz QQ-plotova možemo uočiti da distribucije svih varijabli približno nalikuju normalnoj.
+
+Regresijski model u jeziku R procjenjuje se funkcijom lm() koja kao parametre prima zavisnu i nezavisne varijable.
+
+Za uključivanje kategorijskih varijabli u regresijski model najčešće se koriste tzv. dummy varijable. Kreiranju se dodatne varijable za svaku kategoriju u kategorijskoj varijabli. Ako originalna kategorijska varijabla ima vrijednost određene kategorije, dodatna varijabla će imati vrijednost 1, inače će imati vrijednost 0.
+
+```{r kategorijske ulazne varijable - dummy varijable}
+require(fastDummies)
+dataset4 <- dummy_cols(dataset4,select_columns='OverallQual')
+dataset4 <- dummy_cols(dataset4,select_columns='Neighborhood')
+
+#procjena modela s dummy varijablama
+fit.multi.d = lm(SalePrice ~  GrLivArea + OverallQual_3 + OverallQual_4+ OverallQual_5 +
+                   OverallQual_6 + OverallQual_7+ OverallQual_8 +OverallQual_9 + 
+                   Neighborhood, dataset4)
+summary(fit.multi.d)
+```
+
+
+## Zaključak
+
+Jedan od najčešće korištenih pokazatelja kvalitete prilagodbe modela je koeficijent determinacije, označen kao $R^2$, koji se definira kao: $$R^2 = 1 - \frac{SSE}{SST}.$$ On opisuje koliko postotka varijance je opisao dani model.
+
+Točniji prikaz koeficijenta determinacije je predviđeni koeficijent determinacije: $$R_{adj}^2 = 1 - \frac{SSE/(n-k-1)}{SST/(n-1)}.$$ uzima u obzir i broj nezavisnih varijabli i prikazuje ako je u modelu višak nepotrebnih nezavisnih varijabli. 
+
+Možemo vidjeti da model objašnjava čak cca. $82\%$ varijance. U modelu su korištene varijable kvarta, kvadrature i kvalitete nekretnine.
+
+
+# Pitanje 5. "Postoji li statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba?"
+
+## Postavljamo hipoteze
+
+$H_0$: ne postoji statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba
+$H_1$: postoji statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba
+
+Napravit ćemo novi stupac u kojeg ćemo staviti godišnja doba prodaje stambenih objekata. Raspodjelu ćemo napraviti po mjesecu u kojem je stambeni objekt prodan.
+
+```{r}
+dataset_dod <- dataset
+dataset_dod$Season <- ifelse(dataset_dod$MoSold %in% c(12,1,2), "Winter", 
+                    ifelse(dataset_dod$MoSold %in% c(3,4,5), "Spring", 
+                           ifelse(dataset_dod$MoSold %in% c(6,7,8),"Summer",
+                                  ifelse(dataset_dod$MoSold %in%c(9,10,11),"Autumn", NA))))
+dataset_dod
+```
+
+
+Prikaz količine prodanih stambenih objekata u odnosu na godišnja doba.
+```{r}
+ggplot(dataset_dod, aes(x=reorder(Season, Season, function(x)-length(x)))) +
+geom_bar(fill='blue') +  labs(x='Season')
+```
+Napravit ćemo kontigencijsku tablicu za godišnja doba.
+```{r}
+table <- table(dataset_dod$Season)
+margins_tbl = addmargins(table)
+print(margins_tbl)
+chisq.test(table)
+```
+
+## Zaključak
+
+Na temelju p vrijednosti($p<0.05$) odbacujemo hipotezu "$H_0$: ne postoji statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba" i prihvaćamo hipotezu "$H_1$: postoji statistički značajna razlika između količine prodanih stambenih objekata za različita godišnja doba".
+
+# Zaključak projekta
+
+Analiza skupa podataka o prodanim nekretninama donijela nam je neke zanimljive zaključke. Utvrđene su veze između oblika zemljišne čestice, veličine podruma, broja spavaćih soba i cijene nekretnine. Također, analizom višestruke regresije utvrđeno je da se cijena nekretnine može predvidjeti na temelju dostupnih značajki. Ovaj projekt je pružio korisne informacije o utjecaju različitih značajki nekretnina na cijenu nekretnine te pokazao da se cijena nekretnina može predvidjeti na temelju dostupnih podataka.
+
+Skup podataka nije bio jako velik što je utjecalo na normalnost podataka. Velika količina značajka nije bila normalno raspoređena zbog čega smo često morali čistiti podatke i transformirati ih. Suočili smo se i s problemom krhkih metoda koje smo više koristili za predočenje informacija koje posjedujemo nego za donošenje statističkih zaključaka. S ovakvim skupom podataka koji sadrži jako puno varijabli, svakako bi se moglo postaviti još mnogo istraživačkih pitanja koja su relevantna za predviđanje i razumijevanje tržišta nekretnina.
